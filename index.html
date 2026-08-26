@@ -915,6 +915,16 @@ summary.fhead .chev{flex:0 0 18px}
 }
 .pin.meal b{background:var(--amber)}
 .pin.ship b{background:var(--rose)}
+/* 일정 목록의 번호 배지 — 지도 핀과 같은 번호·같은 색 */
+.pnum{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;border-radius:50%;background:var(--sea);color:#fff;
+  font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;
+  font-size:10.5px;font-weight:600;line-height:1;letter-spacing:-.04em;
+  margin-right:6px;vertical-align:1px;
+}
+.stop.meal .pnum{background:var(--amber)}
+.stop.ship .pnum{background:var(--rose)}
 .pin span{
   position:absolute;left:32px;top:4px;white-space:nowrap;font-size:12px;font-weight:600;
   color:#2A3942;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;
@@ -1758,10 +1768,12 @@ function render(i){
   let mi=0;
   tl.innerHTML=d.stops.map(s=>{
     const has=s.feat||s.design||s.see||s.steps||s.warn||s.note;
-    const mk=s.ll?` data-k="${mi++}" data-lat="${s.ll[0]}" data-lng="${s.ll[1]}"`:'';
+    /* 지도 핀 번호와 같은 순서 — 둘 다 좌표 있는 일정만 세므로 항상 일치한다 */
+    const k=s.ll?mi++:-1;
+    const mk=k>=0?` data-k="${k}" data-lat="${s.ll[0]}" data-lng="${s.ll[1]}"`:'';
     return `<details class="stop ${s.ty}"${has?'':' data-x'}${mk}>
       <summary class="head"><span class="tm">${apChip(s.t)}</span>
-      <span class="ttl"><h3>${s.n}</h3>${s.sub?`<p>${apText(s.sub)}</p>`:''}</span>
+      <span class="ttl"><h3>${k>=0?`<b class="pnum">${k+1}</b>`:''}${s.n}</h3>${s.sub?`<p>${apText(s.sub)}</p>`:''}</span>
       ${has?CH:'<span></span>'}</summary>${has?detail(s):''}</details>`;}).join('');
   tl.querySelectorAll('details[data-x]').forEach(x=>x.querySelector('summary').style.cursor='default');
   curDay=i;
