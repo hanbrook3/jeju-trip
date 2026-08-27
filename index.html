@@ -1783,8 +1783,13 @@ function markSel(marker){
    개요 성격의 화면에서는 제주 본섬이 잘리면 안 된다. 잘리면 사용자가 다시 줌아웃해야 한다.
    섬을 넓게 훑는 화면이면 데이터 범위 대신 섬 범위에 맞춘다. */
 const JEJU=[[33.192,126.150],[33.566,126.946]];
+/* 한 곳을 골랐을 때 들어가는 배율 — 일정·여행지·맛집 모두 같다 */
+const FOCUS_ZOOM=15;
+/* 목록 전체를 보여줄 때 한 곳뿐이면 조금 여유 있게 */
+const ONE_ZOOM=14;
 function fitMap(pts){
   if(!map||!pts||!pts.length) return;
+  if(pts.length===1){ map.setView(pts[0],ONE_ZOOM,{animate:false}); return; }
   const b=L.latLngBounds(pts);
   const wide=(b.getEast()-b.getWest())>0.28||(b.getNorth()-b.getSouth())>0.19;
   map.fitBounds(wide?L.latLngBounds(JEJU):b,
@@ -1862,7 +1867,8 @@ function focusStop(el){
     if(!map) return;
     /* 일정을 연달아 열면 flyTo 가 앞 애니메이션에 눌려 무시된다 — 즉시 이동으로 확실하게 */
     map.stop();
-    map.setView([lat,lng],buildState==='vec'?11:14,{animate:false});
+    /* 여행지·맛집 카드를 열 때와 같은 배율을 쓴다 */
+    map.setView([lat,lng],buildState==='vec'?11:FOCUS_ZOOM,{animate:false});
     const k=+el.dataset.k;
     pinRefs.forEach(function(m,n){
       const ic=m.getElement(); if(!ic) return;
@@ -2876,8 +2882,7 @@ function renderSpotMap(){
     routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
     drawPoi();
     const pts=spotList().map(s=>s.ll);
-    if(pts.length===1) map.setView(pts[0],14,{animate:false});
-    else fitMap(pts);
+    fitMap(pts);
     syncZoom();
   }catch(e){}
 }
@@ -3009,8 +3014,7 @@ function renderFoodMap(){
     let pts=foodList().filter(f=>f.ll).map(f=>f.ll);
     /* '전체'에는 진도가 섞여 있다. 제주만 잡아야 섬이 화면에 꽉 찬다 */
     if(foodZone==='전체'){ const j=pts.filter(p=>p[0]<33.7); if(j.length) pts=j; }
-    if(pts.length===1) map.setView(pts[0],14,{animate:false});
-    else fitMap(pts);
+    fitMap(pts);
     syncZoom();
   }catch(e){}
 }
@@ -3123,7 +3127,7 @@ document.getElementById('spotcards').addEventListener('toggle',e=>{
   document.querySelectorAll('#spotcards details[open]').forEach(x=>{ if(x!==el) x.open=false; });
   const s=SPOT[+el.dataset.si]; if(!s) return;
   showInfo({kind:'spot',idx:+el.dataset.si});
-  try{ if(map){ map.stop(); map.setView(s.ll,15,{animate:false}); } }catch(e){}
+  try{ if(map){ map.stop(); map.setView(s.ll,FOCUS_ZOOM,{animate:false}); } }catch(e){}
   const mz=document.getElementById('mapzone');
   if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
 },true);
@@ -3156,7 +3160,7 @@ document.getElementById('foodcards').addEventListener('toggle',e=>{
   if(!f||!f.ll) return;
   showInfo({kind:'food',idx:+el.dataset.fi});
   /* setView(animate:false) — flyTo 는 앞선 애니메이션에 눌려 무시되는 일이 잦다 */
-  try{ if(map){ map.stop(); map.setView(f.ll,15,{animate:false}); } }catch(e){}
+  try{ if(map){ map.stop(); map.setView(f.ll,FOCUS_ZOOM,{animate:false}); } }catch(e){}
   const mz=document.getElementById('mapzone');
   if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
 },true);
