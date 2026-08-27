@@ -711,7 +711,94 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 /* ═══ 날짜 탭 ═══ */
 .stickytop{position:sticky;top:0;z-index:40;background:var(--bg);box-shadow:0 3px 12px rgba(19,33,43,.10)}
 .days{background:var(--bg)}
+/* ═══ 상단 모드 탭 — 여행 일정 / 준비물 ═══ */
+.modes{background:var(--bg)}
+.modes .wrap{display:flex;gap:0;padding:9px 14px 0;max-width:520px;margin:0 auto}
+.mtab{
+  flex:1;appearance:none;background:none;border:none;cursor:pointer;
+  padding:9px 4px 10px;font-family:inherit;font-size:14px;font-weight:600;
+  color:var(--muted);letter-spacing:-.01em;position:relative;
+  border-bottom:2px solid var(--linesoft);transition:color .15s;
+}
+.mtab.on{color:var(--sea);border-bottom-color:var(--sea)}
+.mtab:focus-visible{outline:2px solid var(--sea2);outline-offset:-2px;border-radius:4px}
 .mapzone{max-width:520px;margin:0 auto;padding:0 14px 10px;position:relative}
+/* ═══ 지도 범례 ═══ */
+.legend{
+  display:flex;align-items:center;gap:11px;flex-wrap:wrap;
+  padding:7px 2px 0;font-size:11px;color:var(--muted);letter-spacing:-.01em;
+}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:block;width:9px;height:9px;border-radius:50%;flex:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.16)}
+.legend .lg-spot{background:#fff;border:1.8px solid #93A6AE}
+.legend .lg-food{background:var(--amber);border:1.8px solid #fff}
+.legend .lgtip{color:var(--faint);font-size:10.5px}
+/* ═══ 지도 아래 정보 패널 ═══ */
+.mapinfo{
+  margin-top:8px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--card);padding:11px 12px 12px;position:relative;
+  box-shadow:0 2px 10px rgba(19,33,43,.07);
+}
+.mapinfo[hidden]{display:none}
+.mapinfo .mi-kind{
+  display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.02em;
+  padding:2px 7px;border-radius:999px;margin-bottom:5px;
+}
+.mapinfo .mi-kind.spot{background:var(--seasoft);color:var(--sea)}
+.mapinfo .mi-kind.food{background:var(--ambersoft);color:#8A5A12}
+.mapinfo h4{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.015em;padding-right:26px}
+.mapinfo p{margin:3px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5}
+.mapinfo .mi-tel{
+  display:inline-block;margin-top:8px;font-size:12.5px;font-weight:600;
+  color:var(--sea);text-decoration:none;border-bottom:1px solid var(--seasoft);
+}
+.mapinfo .mi-x{
+  position:absolute;top:7px;right:7px;width:24px;height:24px;
+  appearance:none;background:none;border:none;cursor:pointer;color:var(--faint);
+  font-size:17px;line-height:1;padding:0;border-radius:6px;
+}
+.mapinfo .mi-x:hover{color:var(--ink2);background:var(--linesoft)}
+/* ═══ 맛집 탭 ═══ */
+.vh{font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;
+  font-size:19px;margin:6px 0 12px;font-weight:600}
+.fbar{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;-webkit-overflow-scrolling:touch}
+.fbar::-webkit-scrollbar{display:none}
+.fchip{
+  appearance:none;flex:none;cursor:pointer;font-family:inherit;
+  padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink2);font-size:12.5px;font-weight:500;
+  letter-spacing:-.01em;white-space:nowrap;transition:background .14s,color .14s;
+}
+.fchip.on{background:var(--sea);border-color:var(--sea);color:#fff;font-weight:600}
+.fcount{margin:0 0 12px;font-size:11.5px;color:var(--faint)}
+.fcard{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px;margin-bottom:9px;
+}
+.fcard-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.fcard h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.015em}
+.fcard .fzone{font-size:11.5px;color:var(--muted);font-weight:500}
+.fcard .fmain{
+  display:inline-block;margin-top:6px;padding:2px 8px;border-radius:999px;
+  background:var(--ambersoft);color:#8A5A12;font-size:11.5px;font-weight:600;
+}
+.fmenu{list-style:none;margin:10px 0 0;padding:9px 0 0;border-top:1px solid var(--linesoft)}
+.fmenu li{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+  font-size:13px;padding:3px 0;line-height:1.5}
+.fmenu li span:first-child{color:var(--ink2)}
+.fmenu .fprice{font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;
+  font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;letter-spacing:-.03em}
+.fmenu .fprice.tbd{color:var(--faint);font-weight:500}
+.fmeta{margin:10px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
+.fact{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.fact a,.fact button{
+  appearance:none;cursor:pointer;font-family:inherit;text-decoration:none;
+  padding:7px 12px;border-radius:9px;border:1px solid var(--line);
+  background:var(--bg);color:var(--sea);font-size:12.5px;font-weight:600;
+}
+.fact button:hover,.fact a:hover{background:var(--seasoft)}
+.fempty{padding:26px 4px;text-align:center;color:var(--faint);font-size:13px}
 #map{height:31vh;min-height:186px;max-height:280px;background:#DCEAEF;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 #map svg.fb{display:block;width:100%;height:100%}
@@ -892,11 +979,17 @@ summary.fhead .chev{flex:0 0 18px}
 .plabel.city{font-size:12.5px;font-weight:600;color:#41505A}
 .plabel.peak{font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;font-size:12.5px;font-weight:700;color:#5B7A63}
 .plabel.isle{font-size:10px;color:#8797A0}
-.poi{background:none;border:none;pointer-events:none}
+.poi{background:none;border:none;cursor:pointer}
 .poi i{
-  display:block;width:9px;height:9px;border-radius:50%;
+  display:block;width:9px;height:9px;border-radius:50%;position:relative;
   background:#fff;border:1.8px solid #93A6AE;box-shadow:0 1px 3px rgba(0,0,0,.18);
 }
+/* 점 자체는 작게 두고 누를 수 있는 범위만 손가락 크기로 넓힌다 */
+.poi i::before{content:'';position:absolute;left:-9px;top:-9px;width:27px;height:27px;border-radius:50%}
+/* 맛집 — 관광지(흰 점)와 색으로 구분 */
+.poi.food i{background:var(--amber);border-color:#fff;width:10px;height:10px}
+.poi.sel i{transform:scale(1.5);box-shadow:0 0 0 4px rgba(44,140,160,.28),0 1px 4px rgba(0,0,0,.3)}
+.poi i{transition:transform .16s ease,box-shadow .16s ease}
 .poi span{
   position:absolute;left:14px;top:-2px;white-space:nowrap;
   font-size:10.5px;font-weight:500;color:#6E7F88;
@@ -956,23 +1049,45 @@ summary.fhead .chev{flex:0 0 18px}
 </header>
 
 <div class="stickytop">
-  <nav class="days"><div class="wrap" role="tablist" id="daytabs"></div></nav>
+  <nav class="modes"><div class="wrap" role="tablist" id="modetabs">
+    <button class="mtab on" type="button" role="tab" aria-selected="true" data-m="trip">여행 일정</button>
+    <button class="mtab" type="button" role="tab" aria-selected="false" data-m="food">맛집</button>
+    <button class="mtab" type="button" role="tab" aria-selected="false" data-m="prep">준비물</button>
+  </div></nav>
+  <nav class="days" id="daysnav"><div class="wrap" role="tablist" id="daytabs"></div></nav>
+  <!-- 지도는 여행 일정과 맛집 탭이 함께 쓴다 -->
   <div class="mapzone" id="mapzone">
     <div id="map"></div>
     <button class="build" id="build" type="button">B9</button>
     <button class="maptoggle" id="maptoggle" aria-expanded="true">지도 접기</button>
+    <div class="legend" id="legend">
+      <span><i class="lg-spot"></i>관광지</span>
+      <span><i class="lg-food"></i>맛집</span>
+      <span class="lgtip">점을 누르면 아래에 정보가 나옵니다</span>
+    </div>
+    <div class="mapinfo" id="mapinfo" hidden></div>
   </div>
 </div>
 
 <main class="wrap">
+ <div id="tripview">
   <section class="card"><div class="dayintro">
     <h2 id="dTitle"></h2><p id="dSub"></p>
     <div class="dstats" id="dStats"></div>
   </div></section>
 
     <div class="tl" id="tl"></div>
+ </div>
 
-  <h2 style="font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;font-size:19px;margin:26px 0 10px">여행 내내 챙길 것</h2>
+ <div id="foodview" hidden>
+   <h2 class="vh">맛집</h2>
+   <div class="fbar" id="foodfilter" role="tablist" aria-label="지역별 보기"></div>
+   <p class="fcount" id="foodcount"></p>
+   <div id="foodcards"></div>
+ </div>
+
+ <div id="prepview" hidden>
+  <h2 style="font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;font-size:19px;margin:6px 0 10px">여행 내내 챙길 것</h2>
 
   <details class="fold" open>
     <summary class="fhead"><span><span class="hi">●</span> 놓치면 안 되는 시각</span>
@@ -1082,11 +1197,12 @@ summary.fhead .chev{flex:0 0 18px}
     <div class="note" style="margin:14px 0 0">10/8 화순곶자왈·송악산은 비에 취약합니다. 그날 비 예보면 위 실내 시설로 바꾸세요.</div>
     </div>
   </details>
+ </div>
 
   <p class="foot">
     지도는 실제 지도·도로 데이터를 씁니다. <b>인터넷 연결이 필요</b>하며, 연결이 없으면 동선이 점선 직선으로 표시됩니다.<br>
     일정·사진·준비물·연락처는 오프라인에서도 그대로 보입니다.<br>
-    지도의 <b>작은 흰 점</b>은 제주 주요 명소입니다 — 확대하면 이름이 나타납니다.<br>
+    지도의 <b>회색 점은 관광지</b>, <b>주황 점은 맛집</b>입니다 — 누르면 지도 아래에 정보가 나옵니다.<br>
     <b>지도가 개략도로 나올 때</b> — 앱 내부 화면이 지도 서버를 막고 있는 경우입니다.
     이 파일을 내려받아 <b>Safari·Chrome 등 브라우저로 열면</b> 실제 지도가 나옵니다.<br>
     빌드 B9 · 2026.08.26 &nbsp;|&nbsp; 운영시간은 조사 시점 기준 — 주황 표시는 미확인 항목입니다.<br>
@@ -1374,17 +1490,36 @@ async function drawRoute(i,pts,color){
   }catch(e){}
 }
 
+/* 관광지·맛집 점 — 일정 지도와 맛집 지도가 함께 쓴다.
+   누르면 지도 아래 정보 패널이 열린다. */
+function drawPoi(){
+  if(!poiLyr) return;
+  POI.forEach(q=>{
+    const fl=q[2]>126.72?' flip':'';
+    L.marker([q[1],q[2]],{interactive:true,keyboard:false,zIndexOffset:-300,
+      icon:L.divIcon({className:'poi'+fl,iconSize:[12,12],iconAnchor:[6,6],
+        html:'<i></i><span>'+q[0]+'</span>'})})
+      .on('click',()=>showInfo({kind:'spot',name:q[0]}))
+      .addTo(poiLyr);
+  });
+  /* 맛집은 주황 점 — 관광지(흰 점)와 색으로 구분한다 */
+  FOOD.forEach((f,fi)=>{
+    if(!f.ll) return;
+    const fl=f.ll[1]>126.72?' flip':'';
+    L.marker(f.ll,{interactive:true,keyboard:false,zIndexOffset:-200,
+      icon:L.divIcon({className:'poi food'+fl,iconSize:[12,12],iconAnchor:[6,6],
+        html:'<i></i><span>'+f.n+'</span>'})})
+      .on('click',()=>showInfo({kind:'food',idx:fi}))
+      .addTo(poiLyr);
+  });
+}
+
 function renderMap(i){
   if(!mapReady){ initMap(); }
   if(!map||!routeLyr||!pinLyr||!poiLyr) return;
   try{
     routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
-    POI.forEach(q=>{
-      const fl=q[2]>126.72?' flip':'';
-      L.marker([q[1],q[2]],{interactive:false,keyboard:false,zIndexOffset:-300,
-        icon:L.divIcon({className:'poi'+fl,iconSize:[12,12],iconAnchor:[6,6],
-          html:'<i></i><span>'+q[0]+'</span>'})}).addTo(poiLyr);
-    });
+    drawPoi();
     const d=D[i], pts=d.stops.filter(s=>s.ll);
     if(!pts.length) return;
     pinRefs=[];
@@ -1407,7 +1542,9 @@ function focusStop(el){
     if(isNaN(lat)) return;
     if(!mapOn){ mapbtn.click(); setTimeout(function(){focusStop(el);},260); return; }
     if(!map) return;
-    map.flyTo([lat,lng],buildState==='vec'?11:14,{duration:.7});
+    /* 일정을 연달아 열면 flyTo 가 앞 애니메이션에 눌려 무시된다 — 즉시 이동으로 확실하게 */
+    map.stop();
+    map.setView([lat,lng],buildState==='vec'?11:14,{animate:false});
     const k=+el.dataset.k;
     pinRefs.forEach(function(m,n){
       const ic=m.getElement(); if(!ic) return;
@@ -1714,18 +1851,74 @@ const D=[
  {ty:'meal',t:'17:30',n:'저녁 · 휴게소 또는 도착 후',sub:'정안알밤 부근'},
  {ty:'move',t:'18:50',n:'음성 대소 도착',sub:'수고하셨습니다'}]}];
 
+/* ══════ 맛집 ══════
+   n    상호            zone 지역(필터 기준)     main 주메뉴
+   menu [[메뉴명, 금액]] — 금액은 확인된 것만 적는다. 비우면 '미확인'으로 표시된다.
+   ll   [위도, 경도] — 있으면 지도에 주황 점으로 찍힌다. 없으면 목록에만 나온다.
+   hours 영업시간   note 메모   tel 전화                                        */
 const FOOD=[
- ['굴포식당','진도 · 복탕','08:30–18:00 무휴 · 항에서 10분','0615433380','061-543-3380'],
- ['백기해녀의집','성산 · 전복죽','07:30–17:00 · 수 휴무 · 광치기 옆','0647820673','064-782-0673'],
- ['남원콩나물국밥','아침','06:00–15:00 · 월 휴무 · 숙소 5분','0647647773','064-764-7773'],
- ['자매해장국','아침 대안','선지해장국·몸국 · 남원읍','0647640085','064-764-0085'],
- ['탐라밥상','위미 · 정식','09:00–21:00 · 일 휴무 · 옥돔구이','0647647309','064-764-7309'],
- ['위미','위미 · 통닭구이','17:00–23:00 · 일 휴무 · 저녁만','07089008816','070-8900-8816'],
- ['화순한가네식당','안덕 · 냉채족발','10:00–17:00 · 목 휴무','07041195912','070-4119-5912'],
- ['알동네집','화순 · 흑돼지','11:00–21:30 · 월 휴무','0647920828','064-792-0828'],
- ['명경식당','화순 · 콩국수','10:30–20:00 무휴 · 목요일 대안','0647949557','064-794-9557']];
+ {n:'굴포식당',zone:'진도',main:'복탕',ll:[34.370696,126.200916],
+  menu:[],hours:'08:30–18:00 무휴',note:'진도항에서 10분 · 승선 전 점심',tel:'061-543-3380'},
+ {n:'백기해녀의집',zone:'성산',main:'전복죽',ll:[33.449958,126.922346],
+  menu:[],hours:'07:30–17:00 · 수 휴무',note:'광치기해변 옆',tel:'064-782-0673'},
+ {n:'남원콩나물국밥',zone:'남원',main:'콩나물국밥',ll:[33.282474,126.716599],
+  menu:[],hours:'06:00–15:00 · 월 휴무',note:'숙소에서 5분 · 아침',tel:'064-764-7773'},
+ {n:'자매해장국',zone:'남원',main:'선지해장국·몸국',ll:[33.279749,126.722992],
+  menu:[],hours:'',note:'남원읍 · 아침 대안',tel:'064-764-0085'},
+ {n:'탐라밥상',zone:'위미',main:'정식',ll:[33.274541,126.66806],
+  menu:[],hours:'09:00–21:00 · 일 휴무',note:'옥돔구이',tel:'064-764-7309'},
+ {n:'위미',zone:'위미',main:'통닭구이',ll:[33.274673,126.659677],
+  menu:[],hours:'17:00–23:00 · 일 휴무',note:'저녁만 영업',tel:'070-8900-8816'},
+ {n:'화순한가네식당',zone:'안덕·화순',main:'냉채족발',ll:[33.239196,126.336606],
+  menu:[],hours:'10:00–17:00 · 목 휴무',note:'',tel:'070-4119-5912'},
+ {n:'알동네집',zone:'안덕·화순',main:'흑돼지',ll:[33.253589,126.340696],
+  menu:[],hours:'11:00–21:30 · 월 휴무',note:'',tel:'064-792-0828'},
+ {n:'명경식당',zone:'안덕·화순',main:'콩국수',ll:[33.247255,126.336975],
+  menu:[],hours:'10:30–20:00 무휴',note:'목요일 대안',tel:'064-794-9557'}];
+
+const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
+
+/* 준비물 탭의 간단 목록 */
 document.getElementById('foodlist').innerHTML=FOOD.map(f=>
- `<li><span class="k">${f[0]} <span style="color:var(--muted);font-weight:400">${f[1]}</span><small>${apText(f[2])}</small></span><span class="v"><a href="tel:${f[3]}">${f[4]}</a></span></li>`).join('');
+ `<li><span class="k">${f.n} <span style="color:var(--muted);font-weight:400">${f.zone} · ${f.main}</span>${
+   f.hours||f.note?`<small>${apText([f.hours,f.note].filter(Boolean).join(' · '))}</small>`:''
+ }</span><span class="v"><a href="${telHref(f.tel)}">${f.tel}</a></span></li>`).join('');
+
+/* ══════ 맛집 탭 ══════ */
+let foodZone='전체';
+function foodZones(){ return ['전체',...[...new Set(FOOD.map(f=>f.zone))]]; }
+function renderFoodFilter(){
+  const bar=document.getElementById('foodfilter'); if(!bar) return;
+  bar.innerHTML=foodZones().map(z=>{
+    const n=z==='전체'?FOOD.length:FOOD.filter(f=>f.zone===z).length;
+    return `<button class="fchip${z===foodZone?' on':''}" type="button" role="tab"
+      aria-selected="${z===foodZone}" data-z="${z}">${z} ${n}</button>`;}).join('');
+}
+function renderFoodCards(){
+  const box=document.getElementById('foodcards'), cnt=document.getElementById('foodcount');
+  if(!box) return;
+  const list=foodZone==='전체'?FOOD:FOOD.filter(f=>f.zone===foodZone);
+  if(cnt) cnt.textContent=`${list.length}곳${foodZone==='전체'?'':' · '+foodZone}`;
+  if(!list.length){ box.innerHTML='<p class="fempty">해당 지역에 등록된 맛집이 없습니다.</p>'; return; }
+  box.innerHTML=list.map(f=>{
+    const idx=FOOD.indexOf(f);
+    const menu=f.menu&&f.menu.length
+      ? `<ul class="fmenu">${f.menu.map(m=>
+          `<li><span>${m[0]}</span><span class="fprice${m[1]?'':' tbd'}">${m[1]||'미확인'}</span></li>`).join('')}</ul>`
+      : `<ul class="fmenu"><li><span style="color:var(--faint)">메뉴·가격 미등록</span></li></ul>`;
+    const meta=[f.hours,f.note].filter(Boolean).join(' · ');
+    return `<div class="fcard">
+      <div class="fcard-h"><h3>${f.n}</h3><span class="fzone">${f.zone}</span></div>
+      <span class="fmain">${f.main}</span>
+      ${menu}
+      ${meta?`<p class="fmeta">${apText(meta)}</p>`:''}
+      <div class="fact">
+        <a href="${telHref(f.tel)}">전화 ${f.tel}</a>
+        ${f.ll?`<button type="button" data-fmap="${idx}">지도에서 보기</button>`:''}
+      </div>
+    </div>`;}).join('');
+}
+function renderFood(){ renderFoodFilter(); renderFoodCards(); }
 
 /* ══════ 오전/오후 표기 ══════ */
 function ap12(h,m){ h=+h; const label=h<12?'오전':'오후'; let hh=h%12; if(hh===0)hh=12; return [label,hh+':'+m]; }
@@ -1796,8 +1989,122 @@ tabs.addEventListener('click',e=>{
   /* 날짜를 바꾸면 맨 위부터 다시 본다 */
   window.scrollTo({top:0,behavior:'smooth'});
 });
+
+/* ══════ 지도 아래 정보 패널 ══════ */
+function hideInfo(){
+  const box=document.getElementById('mapinfo');
+  if(box){ box.hidden=true; box.innerHTML=''; }
+  document.querySelectorAll('#map .poi.sel').forEach(x=>x.classList.remove('sel'));
+}
+function showInfo(t){
+  const box=document.getElementById('mapinfo'); if(!box) return;
+  let h='';
+  if(t.kind==='food'){
+    const f=FOOD[t.idx]; if(!f) return;
+    const menu=f.menu&&f.menu.length
+      ? `<ul class="fmenu" style="margin-top:8px">${f.menu.map(m=>
+          `<li><span>${m[0]}</span><span class="fprice${m[1]?'':' tbd'}">${m[1]||'미확인'}</span></li>`).join('')}</ul>`
+      : '';
+    const meta=[f.hours,f.note].filter(Boolean).join(' · ');
+    h=`<span class="mi-kind food">맛집 · ${f.zone}</span>
+       <h4>${f.n}</h4>
+       <p>${f.main}${meta?' — '+apText(meta):''}</p>
+       ${menu}
+       <a class="mi-tel" href="${telHref(f.tel)}">전화 ${f.tel}</a>`;
+  }else{
+    h=`<span class="mi-kind spot">관광지</span>
+       <h4>${t.name}</h4>
+       <p>제주 주요 명소입니다. 일정에 넣고 싶으시면 말씀해 주세요.</p>`;
+  }
+  box.innerHTML=h+'<button class="mi-x" type="button" aria-label="닫기">&times;</button>';
+  box.hidden=false;
+  const x=box.querySelector('.mi-x'); if(x) x.addEventListener('click',hideInfo);
+}
+
+/* ══════ 맛집 탭의 지도 ══════
+   일정용 경로·번호핀은 걷어내고, 지금 걸러진 맛집들이 다 들어오게 맞춘다. */
+function foodList(){ return foodZone==='전체'?FOOD:FOOD.filter(f=>f.zone===foodZone); }
+function renderFoodMap(){
+  if(!map||!routeLyr||!pinLyr||!poiLyr) return;
+  try{
+    routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
+    drawPoi();
+    map.stop();
+    let pts=foodList().filter(f=>f.ll).map(f=>f.ll);
+    /* '전체'에는 진도가 섞여 있다. 제주만 잡아야 섬이 화면에 꽉 찬다 */
+    if(foodZone==='전체'){ const j=pts.filter(p=>p[0]<33.7); if(j.length) pts=j; }
+    if(pts.length===1) map.setView(pts[0],14,{animate:false});
+    else if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[52,52],maxZoom:13,animate:false});
+    syncZoom();
+  }catch(e){}
+}
+
+/* ══════ 상단 모드 전환 — 여행 일정 / 맛집 / 준비물 ══════ */
+const MODES={
+  trip:{view:'tripview',days:true,map:true},
+  food:{view:'foodview',days:false,map:true},
+  prep:{view:'prepview',days:false,map:false},
+};
+let curMode='trip';
+function setMode(m,opt){
+  if(!MODES[m]) m='trip';
+  const same=(curMode===m); curMode=m;
+  document.querySelectorAll('#modetabs .mtab').forEach(b=>{
+    const on=b.dataset.m===m;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-selected',on?'true':'false');
+  });
+  Object.entries(MODES).forEach(([k,cfg])=>{
+    const el=document.getElementById(cfg.view);
+    if(el) el.hidden=(k!==m);
+  });
+  const days=document.getElementById('daysnav');
+  if(days) days.hidden=!MODES[m].days;
+  const mz=document.getElementById('mapzone');
+  if(mz) mz.hidden=!MODES[m].map;
+  if(!MODES[m].map) hideInfo();
+  if(m==='food'){ renderFood(); }
+  if(MODES[m].map&&map){
+    /* 크기 재계산과 화면 이동은 한 틱 떼어놓는다 — 붙이면 이동이 취소된다 */
+    setTimeout(()=>{
+      try{ map.invalidateSize(); }catch(e){}
+      setTimeout(()=>{
+        try{
+          if(m==='food'){ if(!(opt&&opt.keepView)) renderFoodMap(); }
+          else renderMap(curDay);
+        }catch(e){}
+      },50);
+    },60);
+  }
+  if(!(opt&&opt.noScroll)) window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('modetabs').addEventListener('click',e=>{
+  const b=e.target.closest('.mtab'); if(!b) return;
+  hideInfo();
+  setMode(b.dataset.m);
+});
+
+/* 맛집 탭 — 지역 필터를 바꾸면 지도도 그 지역으로 맞춘다 */
+document.getElementById('foodfilter').addEventListener('click',e=>{
+  const c=e.target.closest('.fchip'); if(!c) return;
+  foodZone=c.dataset.z; renderFood(); hideInfo(); renderFoodMap();
+});
+/* 지도에서 보기 — 맛집 탭에 머문 채로 지도만 확대한다 */
+document.getElementById('foodcards').addEventListener('click',e=>{
+  const b=e.target.closest('[data-fmap]'); if(!b) return;
+  const i=+b.dataset.fmap, f=FOOD[i];
+  if(!f||!f.ll) return;
+  showInfo({kind:'food',idx:i});
+  const mz=document.getElementById('mapzone');
+  if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
+  /* flyTo 는 앞선 애니메이션이나 invalidateSize 에 눌려 무시되는 일이 잦다.
+     연달아 눌러도 항상 그 식당으로 가도록 애니메이션 없이 즉시 이동한다. */
+  try{ if(map){ map.stop(); map.setView(f.ll,15,{animate:false}); } }catch(e){}
+});
+
 initMap();
 render(0);
+renderFood();
 setTimeout(function(){ try{ if(map){ map.invalidateSize(); renderMap(curDay); } }catch(e){} },120);
 setTimeout(function(){ if(buildState!=='ok') setBuild('vec'); },6000);
 window.addEventListener('unhandledrejection',function(e){ if(e&&e.preventDefault) e.preventDefault(); });
