@@ -738,7 +738,7 @@ button{font-family:inherit;font-size:inherit;color:inherit}
   .herostrip{margin-top:8px;gap:5px}
   .herostrip div{padding:6px 7px;font-size:9px;line-height:1.3}
   .herostrip b{font-size:11.5px}
-  #map{height:27vh;min-height:150px}
+  #map{height:32vh;min-height:180px}
   .mtab{padding:7px 2px 8px;font-size:12.5px}
 }
 .herostrip{display:flex;gap:8px;margin-top:16px}
@@ -906,11 +906,11 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 /* 탭이 넷이라 폭을 줄인다 */
 .mtab{padding:9px 2px 10px;font-size:13px}
 @media (max-width:360px){ .mtab{font-size:12px;letter-spacing:-.03em} }
-#map{height:36vh;min-height:210px;max-height:320px;background:#DCEAEF;
+#map{height:42vh;min-height:240px;max-height:360px;background:#DCEAEF;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 /* 좁은 화면에서는 지도를 조금 낮춰 아래 목록이 더 보이게 한다 */
 @media (max-width:520px){
-  #map{height:31vh;min-height:180px;max-height:260px}
+  #map{height:38vh;min-height:215px;max-height:300px}
   .mapzone{padding:0 14px 8px}
   .legend{padding-top:6px;gap:9px;font-size:10.5px}
   /* 정보가 길어도 화면을 다 덮지 않도록 — 넘치면 패널 안에서 스크롤 */
@@ -1243,7 +1243,7 @@ summary.fhead .chev{flex:0 0 18px}
   .dtab .d1{font-size:13px}
   .dtab .d2{font-size:9.5px}
   .mapzone{padding:0 14px 6px}
-  #map{height:27vh;min-height:150px;max-height:210px}
+  #map{height:32vh;min-height:180px;max-height:245px}
   .legend{padding-top:5px;gap:8px;font-size:10px}
   .legend .lgtip{display:none}
 }
@@ -1660,8 +1660,8 @@ function initMap(){
   if(mapReady) return;
   if(typeof L==='undefined'){ staticMap(); return; }
   try{
-    map=L.map('map',{center:[33.375,126.545],zoom:9,minZoom:8,maxZoom:17,
-      zoomControl:false,attributionControl:false});
+    map=L.map('map',{center:[33.375,126.545],zoom:9,minZoom:8.5,maxZoom:17,
+      zoomSnap:.25,zoomDelta:.5,zoomControl:false,attributionControl:false});
     L.control.zoom({position:'bottomright'}).addTo(map);
     L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
     /* 벡터 밑그림은 타일보다 아래 층에 둔다 — 타일이 오면 자연히 덮이고, 안 오면 그대로 보인다 */
@@ -1762,6 +1762,18 @@ function markSel(marker){
     if(el) el.classList.add('sel');
   }catch(e){}
 }
+/* ══════ 지도 범위 맞추기 ══════
+   개요 성격의 화면에서는 제주 본섬이 잘리면 안 된다. 잘리면 사용자가 다시 줌아웃해야 한다.
+   섬을 넓게 훑는 화면이면 데이터 범위 대신 섬 범위에 맞춘다. */
+const JEJU=[[33.192,126.150],[33.566,126.946]];
+function fitMap(pts){
+  if(!map||!pts||!pts.length) return;
+  const b=L.latLngBounds(pts);
+  const wide=(b.getEast()-b.getWest())>0.28||(b.getNorth()-b.getSouth())>0.19;
+  map.fitBounds(wide?L.latLngBounds(JEJU):b,
+    {paddingTopLeft:[10,10],paddingBottomRight:[28,10],maxZoom:14,animate:false});
+}
+
 function drawPoi(){
   if(!poiLyr) return;
   /* 여행지로 등록된 곳 — 상세 정보가 붙어 있어 점을 진하게 그린다 */
@@ -1820,7 +1832,7 @@ function renderMap(i){
       });
       pinRefs.push(mk);
     });
-    map.fitBounds(L.latLngBounds(pts.map(s=>s.ll)),{padding:[46,46]});
+    fitMap(pts.map(s=>s.ll));
     syncZoom();
     if(pts.length>1) drawRoute(i,pts.map(s=>s.ll),DAYCOLOR[i]);
   }catch(e){}
@@ -2848,7 +2860,7 @@ function renderSpotMap(){
     drawPoi();
     const pts=spotList().map(s=>s.ll);
     if(pts.length===1) map.setView(pts[0],14,{animate:false});
-    else if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[52,52],maxZoom:13,animate:false});
+    else fitMap(pts);
     syncZoom();
   }catch(e){}
 }
@@ -2981,7 +2993,7 @@ function renderFoodMap(){
     /* '전체'에는 진도가 섞여 있다. 제주만 잡아야 섬이 화면에 꽉 찬다 */
     if(foodZone==='전체'){ const j=pts.filter(p=>p[0]<33.7); if(j.length) pts=j; }
     if(pts.length===1) map.setView(pts[0],14,{animate:false});
-    else if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[52,52],maxZoom:13,animate:false});
+    else fitMap(pts);
     syncZoom();
   }catch(e){}
 }
@@ -3122,7 +3134,17 @@ renderFood();
   const m=(location.hash||'').replace('#','');
   setMode(MODES[m]?m:'prep',{noScroll:true});
 })();
-setTimeout(function(){ try{ if(map){ map.invalidateSize(); renderMap(curDay); } }catch(e){} },120);
+/* 첫 로딩 뒤 지도 크기가 확정되면 지금 탭에 맞춰 다시 맞춘다.
+   전에는 탭과 무관하게 일정 지도를 그려 여행지·맛집 화면을 덮어썼다. */
+setTimeout(function(){
+  try{
+    if(!map) return;
+    map.invalidateSize();
+    if(curMode==='food') renderFoodMap();
+    else if(curMode==='spot') renderSpotMap();
+    else renderMap(curDay);
+  }catch(e){}
+},220);
 setTimeout(function(){ if(buildState!=='ok') setBuild('vec'); },6000);
 window.addEventListener('unhandledrejection',function(e){ if(e&&e.preventDefault) e.preventDefault(); });
 
