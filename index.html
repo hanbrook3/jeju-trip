@@ -913,6 +913,7 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
   #map{height:38vh;min-height:215px;max-height:300px}
   .mapzone{padding:0 14px 8px}
   .legend{padding-top:6px;gap:9px;font-size:10.5px}
+  .legend .lgtip{display:none}
   /* 정보가 길어도 화면을 다 덮지 않도록 — 넘치면 패널 안에서 스크롤 */
   .mapinfo{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 }
@@ -928,19 +929,33 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .leaflet-control-attribution a{color:#8B989F !important;text-decoration:none !important}
 .leaflet-control-attribution:hover{background:rgba(255,255,255,.92) !important;color:#5D6B74 !important}
 
-.mapall{
-  position:absolute;right:22px;bottom:18px;z-index:500;
-  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
-  padding:7px 12px;font-size:11.5px;font-weight:600;color:var(--sea);cursor:pointer;
-  box-shadow:0 1px 5px rgba(0,0,0,.14);
+/* ═══ 지도 조작 버튼 — 지도를 가리지 않도록 범례 줄 오른쪽에 둔다 ═══ */
+.legbtns{margin-left:auto;display:inline-flex;gap:6px;flex:none}
+.legbtns button{
+  border:1px solid var(--line);border-radius:7px;background:var(--card);
+  font:inherit;font-size:10.5px;font-weight:600;line-height:1.35;
+  padding:4px 9px;color:var(--sea);cursor:pointer;white-space:nowrap;
 }
-.mapzone.hid .mapall{display:none}
-.maptoggle{
-  position:absolute;right:22px;top:8px;z-index:500;
-  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
-  padding:6px 11px;font-size:11.5px;font-weight:500;color:var(--ink2);cursor:pointer;
-  box-shadow:0 1px 5px rgba(0,0,0,.14);
+.legbtns button:active{background:var(--seasoft)}
+.legbtns button:focus-visible{outline:2px solid var(--sea2);outline-offset:1px}
+.legbtns .maptoggle{color:var(--muted);font-weight:500}
+
+/* 지도 전체보기 — 화면을 가득 채운다 */
+body.mapfull{overflow:hidden}
+.mapzone.full{position:fixed;inset:0;z-index:70;max-width:none;margin:0;padding:0;background:var(--bg)}
+.mapzone.full #map{height:100%;max-height:none;min-height:0;border:none;border-radius:0}
+/* 전체보기 중에는 범례 글씨를 접고 버튼만 지도 위에 띄운다 */
+.mapzone.full .legend{
+  position:absolute;left:0;right:0;bottom:0;z-index:500;
+  padding:0;justify-content:flex-end;pointer-events:none;
 }
+.mapzone.full .legend>span:not(.legbtns){display:none}
+.mapzone.full .legbtns{margin:0 14px calc(14px + env(safe-area-inset-bottom));pointer-events:auto}
+.mapzone.full .legbtns button{
+  padding:9px 15px;font-size:12.5px;
+  background:rgba(255,255,255,.96);box-shadow:0 2px 10px rgba(0,0,0,.18);
+}
+.mapzone.full .maptoggle{display:none}
 .build{
   position:absolute;left:22px;top:16px;z-index:600;cursor:pointer;
   font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:-.02em;
@@ -954,10 +969,12 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 /* 지도가 정상이면 배지는 알릴 것이 없다. 실패했을 때만 재시도 버튼으로 남는다. */
 .build.ok{display:none}
 .mapzone.hid{padding-bottom:8px}
-.mapzone.hid .maptoggle{
-  position:static;display:block;width:100%;box-shadow:none;
-  background:var(--card);padding:9px;color:var(--muted);
-}
+/* 지도를 접으면 범례도 가리킬 것이 없다 — 펼치기 버튼만 남긴다 */
+.mapzone.hid .legend{padding-top:0}
+.mapzone.hid .legend>span:not(.legbtns){display:none}
+.mapzone.hid .legbtns{width:100%;margin-left:0}
+.mapzone.hid .mapfit,.mapzone.hid .mapall{display:none}
+.mapzone.hid .maptoggle{width:100%;padding:9px;background:var(--card);color:var(--muted)}
 .days .wrap{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-top:10px;padding-bottom:10px}
 .days .wrap::-webkit-scrollbar{display:none}
 .dtab{
@@ -1284,14 +1301,17 @@ summary.fhead .chev{flex:0 0 18px}
   <div class="mapzone" id="mapzone">
     <div id="map"></div>
     <button class="build" id="build" type="button">B9</button>
-    <button class="maptoggle" id="maptoggle" aria-expanded="true">지도 접기</button>
-    <button class="mapall" id="mapall" type="button">전체보기</button>
     <div class="legend" id="legend">
       <span><i class="lg-trip"></i>여행지</span>
       <span><i class="lg-spot"></i>그 밖의 명소</span>
       <span><i class="lg-food"></i>식당</span>
       <span><i class="lg-cafe"></i>카페</span>
       <span class="lgtip">점을 누르면 아래에 정보가 나옵니다</span>
+      <span class="legbtns">
+        <button class="mapfit" id="mapfit" type="button">섬 전체</button>
+        <button class="mapall" id="mapall" type="button" aria-pressed="false">전체보기</button>
+        <button class="maptoggle" id="maptoggle" type="button" aria-expanded="true">지도 접기</button>
+      </span>
     </div>
   </div>
 </div>
@@ -1777,6 +1797,25 @@ function declutter(){
   }catch(e){}
 }
 
+/* 카드가 상단 고정 영역에 가리지 않도록 그 바로 아래에 오게 스크롤한다.
+   scrollIntoView 만 쓰면 지도 뒤로 숨거나 화면 한가운데에 놓인다. */
+function scrollUnderMap(el){
+  if(!el) return;
+  const go=()=>{
+    try{
+      const st=document.querySelector('.stickytop');
+      const off=st?st.getBoundingClientRect().height:0;
+      const y=window.scrollY+el.getBoundingClientRect().top-off-8;
+      window.scrollTo(0,Math.max(0,y));
+    }catch(e){ try{ el.scrollIntoView(true); }catch(e2){} }
+  };
+  /* 카드가 열리며 높이가 변하고 지도도 움직인다.
+     부드러운 스크롤은 그 사이에 취소되므로 즉시 옮기고, 레이아웃이 잡힌 뒤 한 번 더 맞춘다. */
+  go();
+  requestAnimationFrame(go);
+  setTimeout(go,260);
+}
+
 /* 누른 점을 지도에서 크게 표시한다 */
 function markSel(marker){
   try{
@@ -1856,7 +1895,9 @@ function renderMap(i){
           html:'<b>'+(n+1)+'</b><span>'+s.n+'</span>'})}).addTo(pinLyr);
       mk.on('click',function(){
         const d=tl.querySelector('details.stop[data-k="'+n+'"]');
-        if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'center'}); }
+        if(!d) return;
+        d.open=true;
+        scrollUnderMap(d);
       });
       pinRefs.push(mk);
     });
@@ -3094,6 +3135,22 @@ document.getElementById('foodfilter').addEventListener('click',e=>{
   renderFoodCards(); hideInfo(); renderFoodMap();
 });
 /* 지도에서 보기 — 맛집 탭에 머문 채로 지도만 확대한다 */
+/* 전체보기 — 지도를 화면 가득 채운다. 다시 누르면 원래대로. */
+function toggleMapFull(){
+  const mz=document.getElementById('mapzone'), btn=document.getElementById('mapall');
+  if(!mz||!btn) return;
+  const on=!mz.classList.contains('full');
+  mz.classList.toggle('full',on);
+  document.body.classList.toggle('mapfull',on);
+  btn.textContent=on?'닫기':'전체보기';
+  btn.setAttribute('aria-pressed',on?'true':'false');
+  /* 크기가 바뀌었으니 다시 재고, 한 틱 뒤에 화면을 맞춘다 */
+  setTimeout(function(){
+    try{ if(map) map.invalidateSize(); }catch(e){}
+    setTimeout(fitCurrent,60);
+  },220);
+}
+
 /* 지금 탭에 맞는 전체 범위로 되돌린다 */
 function fitCurrent(){
   hideInfo();
@@ -3107,7 +3164,8 @@ function fitCurrent(){
     else renderMap(curDay);
   }catch(e){}
 }
-document.getElementById('mapall').addEventListener('click',fitCurrent);
+document.getElementById('mapall').addEventListener('click',toggleMapFull);
+document.getElementById('mapfit').addEventListener('click',fitCurrent);
 
 /* 하루 요약을 누르면 확대된 지도를 그날 전체가 보이게 되돌린다 */
 document.getElementById('dayintro').addEventListener('click',fitCurrent);
