@@ -1106,12 +1106,17 @@ summary.fhead .chev{flex:0 0 18px}
 /* 맛집 — 관광지(흰 점)와 색으로 구분 */
 .poi.food i{background:var(--amber);border-color:#fff;width:10px;height:10px}
 .poi.food.cafe i{background:var(--rose)}
+/* 가려진 개수 — 보조 정보다. 일정 핀·장소 점보다 뒤로 물러나야 한다.
+   전에는 팔레트에서 가장 진한 색에 흰 글자라 가장 먼저 눈에 들어왔다. */
 .poi .cnt{
-  position:absolute;left:11px;top:-7px;font-style:normal;
-  background:var(--ink2);color:#fff;font-size:9.5px;font-weight:700;
-  padding:1px 4px;border-radius:999px;white-space:nowrap;
-  box-shadow:0 1px 3px rgba(0,0,0,.25);
+  position:absolute;left:10px;top:-6px;font-style:normal;
+  background:rgba(255,255,255,.82);color:var(--muted);
+  font-size:8.5px;font-weight:600;line-height:1.5;letter-spacing:-.02em;
+  padding:0 3px;border-radius:999px;white-space:nowrap;
+  border:1px solid rgba(120,134,143,.28);
 }
+/* 선택한 점의 배지만 잠깐 또렷해진다 */
+.poi.sel .cnt{background:#fff;color:var(--ink2);border-color:rgba(120,134,143,.55)}
 .poi.sel i{transform:scale(1.5);box-shadow:0 0 0 4px rgba(44,140,160,.28),0 1px 4px rgba(0,0,0,.3)}
 .poi i{transition:transform .16s ease,box-shadow .16s ease}
 .poi span{
