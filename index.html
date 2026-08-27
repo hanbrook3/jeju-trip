@@ -738,7 +738,7 @@ button{font-family:inherit;font-size:inherit;color:inherit}
   .herostrip{margin-top:8px;gap:5px}
   .herostrip div{padding:6px 7px;font-size:9px;line-height:1.3}
   .herostrip b{font-size:11.5px}
-  #map{height:22vh;min-height:128px}
+  #map{height:27vh;min-height:150px}
   .mtab{padding:7px 2px 8px;font-size:12.5px}
 }
 .herostrip{display:flex;gap:8px;margin-top:16px}
@@ -906,11 +906,11 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 /* 탭이 넷이라 폭을 줄인다 */
 .mtab{padding:9px 2px 10px;font-size:13px}
 @media (max-width:360px){ .mtab{font-size:12px;letter-spacing:-.03em} }
-#map{height:31vh;min-height:186px;max-height:280px;background:#DCEAEF;
+#map{height:36vh;min-height:210px;max-height:320px;background:#DCEAEF;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 /* 좁은 화면에서는 지도를 조금 낮춰 아래 목록이 더 보이게 한다 */
 @media (max-width:520px){
-  #map{height:25vh;min-height:150px;max-height:210px}
+  #map{height:31vh;min-height:180px;max-height:260px}
   .mapzone{padding:0 14px 8px}
   .legend{padding-top:6px;gap:9px;font-size:10.5px}
   /* 정보가 길어도 화면을 다 덮지 않도록 — 넘치면 패널 안에서 스크롤 */
@@ -967,14 +967,22 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .pad{padding:16px}
 
 /* 날 소개 */
-.dayintro{padding:18px 16px 16px}
-.dayintro h2{font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;font-size:21px;font-weight:700;margin:0 0 5px;letter-spacing:-.02em}
-.dayintro p{margin:0;font-size:13px;color:var(--muted);line-height:1.6}
-.dstats{display:flex;border-top:1px solid var(--linesoft);margin-top:14px}
-.dstats div{flex:1;padding:12px 8px;text-align:center}
-.dstats div+div{border-left:1px solid var(--linesoft)}
-.dstats b{display:block;font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:15px;font-weight:600;letter-spacing:-.03em}
-.dstats span{font-size:10.5px;color:var(--muted)}
+/* 하루 요약 — 문장 하나와 숫자 셋뿐이라 자리를 많이 차지할 이유가 없다.
+   전에는 3칸짜리 표라 화면의 절반 가까이를 먹었다. */
+.dayintro{padding:12px 14px}
+.dayintro h2{font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;
+  font-size:17px;font-weight:700;margin:0 0 3px;letter-spacing:-.02em;line-height:1.3}
+.dayintro p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+.dstats{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px;
+  border-top:1px solid var(--linesoft);margin-top:9px;padding-top:8px;
+  font-size:11.5px;color:var(--muted);line-height:1.7;
+}
+.dstats .dst b{
+  font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;
+  font-size:12.5px;font-weight:600;letter-spacing:-.03em;color:var(--ink2);
+}
+.dstats .dsep{font-style:normal;color:var(--faint)}
 
 /* ═══ 메인 타임라인 ═══ */
 .tl{margin-top:14px}
@@ -1175,6 +1183,48 @@ summary.fhead .chev{flex:0 0 18px}
 .offbar[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* ═══ 휴대폰 세로 여백 조이기 ═══
+   화면 세로는 정해져 있는데 카드마다 패딩 28px, 카드 간격 9px 이 쌓여
+   목록의 절반 가까이가 빈 공간이었다. 읽기 편한 선은 지키면서 줄인다.
+   터치 영역은 그대로 44px 이상 남는다. */
+@media (max-width:520px){
+  /* 탭은 가장 자주 누르는 곳이라 여백을 줄이지 않는다 */
+  .mtab{min-height:42px}
+  main.wrap{padding-bottom:6px}
+  .card{margin-top:9px}
+  .tl{margin-top:9px}
+  .dayintro{padding:11px 13px}
+  .dayintro h2{font-size:16.5px}
+
+  details.stop{margin-bottom:6px}
+  summary.head{padding:9px 12px 9px 11px;min-height:52px;gap:9px}
+  .ttl h3{line-height:1.3}
+  .ttl p{margin-top:1px;line-height:1.4}
+
+  .fcard{margin-bottom:6px}
+  summary.fhead2{padding:9px 13px}
+  .fbody2{padding:0 13px 11px}
+  .fnote{margin-top:7px;padding:8px 10px;line-height:1.55}
+  .faddr{margin-top:6px}
+  .fmenu{margin-top:8px;padding-top:8px}
+  .fmenu li{padding:2px 0;line-height:1.45}
+  .sdet{padding-top:9px}
+  .sdl{margin-bottom:8px}
+  .sdl dd{line-height:1.55}
+
+  .fold{margin-bottom:6px}
+  .fhead{padding:11px 13px}
+  .fbody{padding:11px 13px}
+  .rows li{padding:7px 0}
+
+  .vh{margin:2px 0 9px}
+  .fbar{padding-bottom:8px}
+  .fkindbar{margin-bottom:8px}
+  .faxbar{margin-bottom:9px}
+  .fcount{margin-bottom:9px}
+  .foot{margin-top:14px;line-height:1.6}
+}
+
 /* ═══ 세로가 짧은 휴대폰(아이폰 SE 등) ═══
    첫 화면에서 헤더와 지도가 대부분을 먹지 않도록 한 번에 줄인다.
    반드시 스타일 맨 끝에 둔다 — 앞의 미디어 블록에 덮이지 않게. */
@@ -1193,7 +1243,7 @@ summary.fhead .chev{flex:0 0 18px}
   .dtab .d1{font-size:13px}
   .dtab .d2{font-size:9.5px}
   .mapzone{padding:0 14px 6px}
-  #map{height:22vh;min-height:126px;max-height:172px}
+  #map{height:27vh;min-height:150px;max-height:210px}
   .legend{padding-top:5px;gap:8px;font-size:10px}
   .legend .lgtip{display:none}
 }
@@ -2842,7 +2892,8 @@ function render(i){
   const d=D[i];
   document.getElementById('dTitle').textContent=d.t;
   document.getElementById('dSub').textContent=d.s;
-  document.getElementById('dStats').innerHTML=d.st.map(x=>`<div><b>${apText(x[0])}</b><span>${x[1]}</span></div>`).join('');
+  document.getElementById('dStats').innerHTML=d.st.map(x=>
+    `<span class="dst"><b>${apText(x[0])}</b> ${x[1]}</span>`).join('<i class="dsep">·</i>');
   let mi=0;
   tl.innerHTML=d.stops.map(s=>{
     const has=s.feat||s.design||s.see||s.steps||s.warn||s.note;
