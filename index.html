@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#12414A">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="제주 여행">
 <title>제주 4박 5일 · 우리 가족 여행 가이드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1093,6 +1098,12 @@ summary.fhead .chev{flex:0 0 18px}
 /* 맛집 — 관광지(흰 점)와 색으로 구분 */
 .poi.food i{background:var(--amber);border-color:#fff;width:10px;height:10px}
 .poi.food.cafe i{background:var(--rose)}
+.poi .cnt{
+  position:absolute;left:11px;top:-7px;font-style:normal;
+  background:var(--ink2);color:#fff;font-size:9.5px;font-weight:700;
+  padding:1px 4px;border-radius:999px;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
 .poi.sel i{transform:scale(1.5);box-shadow:0 0 0 4px rgba(44,140,160,.28),0 1px 4px rgba(0,0,0,.3)}
 .poi i{transition:transform .16s ease,box-shadow .16s ease}
 .poi span{
@@ -1135,6 +1146,12 @@ summary.fhead .chev{flex:0 0 18px}
 .mapnote{padding:10px 16px;font-size:11.5px;color:var(--muted);line-height:1.55;border-top:1px solid var(--linesoft)}
 
 .foot{margin:20px 0 0;font-size:11.5px;color:var(--muted);line-height:1.7;text-align:center}
+.offbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:60;
+  background:#8A5A12;color:#fff;font-size:12.5px;font-weight:500;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));text-align:center;line-height:1.45;
+}
+.offbar[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* ═══ 세로가 짧은 휴대폰(아이폰 SE 등) ═══
@@ -1344,7 +1361,8 @@ summary.fhead .chev{flex:0 0 18px}
 
   <p class="foot">
     지도는 실제 지도·도로 데이터를 씁니다. <b>인터넷 연결이 필요</b>하며, 연결이 없으면 동선이 점선 직선으로 표시됩니다.<br>
-    일정·사진·준비물·연락처는 오프라인에서도 그대로 보입니다.<br>
+    한 번 연 뒤에는 <b>인터넷이 없어도</b> 일정·사진·맛집·여행지·준비물이 그대로 열립니다.
+    휴대폰 브라우저 메뉴에서 <b>홈 화면에 추가</b>하면 앱처럼 쓸 수 있습니다.<br>
     지도의 <b>회색 점은 관광지</b>, <b>주황 점은 맛집</b>입니다 — 누르면 지도 아래에 정보가 나옵니다.<br>
     <b>지도가 개략도로 나올 때</b> — 앱 내부 화면이 지도 서버를 막고 있는 경우입니다.
     이 파일을 내려받아 <b>Safari·Chrome 등 브라우저로 열면</b> 실제 지도가 나옵니다.<br>
@@ -1599,7 +1617,8 @@ function initMap(){
     poiLyr=L.layerGroup().addTo(map);
     routeLyr=L.layerGroup().addTo(map);
     pinLyr=L.layerGroup().addTo(map);
-    map.on('zoomend',syncZoom);
+    map.on('zoomend',function(){ syncZoom(); declutter(); });
+    map.on('moveend',declutter);
     const bb=document.getElementById('build');
     if(bb) bb.addEventListener('click',retryTiles);
     mapReady=true;
@@ -1635,6 +1654,37 @@ async function drawRoute(i,pts,color){
 
 /* 관광지·맛집 점 — 일정 지도와 맛집 지도가 함께 쓴다.
    누르면 지도 아래 정보 패널이 열린다. */
+/* ══════ 겹치는 점 정리 ══════
+   축소하면 점 130여 개가 서로 포개져 무엇인지도, 누를 수도 없다.
+   화면을 격자로 나눠 칸마다 하나만 남기고, 가려진 개수를 +N 으로 알린다.
+   확대하면 칸에 하나씩만 들어가 자연히 전부 보인다. */
+const CELL=34;
+function declutter(){
+  if(!map||!poiLyr) return;
+  try{
+    const best=new Map(), all=[];
+    poiLyr.eachLayer(m=>{
+      const el=m.getElement&&m.getElement(); if(!el) return;
+      all.push([m,el]);
+      const pt=map.latLngToContainerPoint(m.getLatLng());
+      const k=Math.floor(pt.x/CELL)+':'+Math.floor(pt.y/CELL);
+      const cur=best.get(k);
+      if(!cur){ best.set(k,{m,el,n:1}); }
+      else{ cur.n++; if((m._prio||0)>(cur.m._prio||0)){ cur.m=m; cur.el=el; } }
+    });
+    const keep=new Set();
+    best.forEach(v=>keep.add(v.m));
+    all.forEach(([m,el])=>{ el.style.display=keep.has(m)?'':'none'; });
+    best.forEach(v=>{
+      let b=v.el.querySelector('.cnt');
+      if(v.n>1){
+        if(!b){ b=document.createElement('em'); b.className='cnt'; v.el.appendChild(b); }
+        b.textContent='+'+(v.n-1);
+      }else if(b){ b.remove(); }
+    });
+  }catch(e){}
+}
+
 /* 누른 점을 지도에서 크게 표시한다 */
 function markSel(marker){
   try{
@@ -1652,7 +1702,7 @@ function drawPoi(){
       icon:L.divIcon({className:'poi spot'+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+s.n+'</span>'})})
       .on('click',function(){ showInfo({kind:'spot',idx:i}); markSel(this); })
-      .addTo(poiLyr);
+      .addTo(poiLyr)._prio=4;
   });
   /* 그 밖의 명소 — 이름만 있는 옅은 점.
      여행지·맛집으로 이미 그린 곳은 건너뛴다(점이 겹치지 않게). */
@@ -1664,7 +1714,7 @@ function drawPoi(){
       icon:L.divIcon({className:'poi'+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+q[0]+'</span>'})})
       .on('click',function(){ showInfo({kind:'spot',name:q[0]}); markSel(this); })
-      .addTo(poiLyr);
+      .addTo(poiLyr)._prio=1;
   });
   /* 맛집은 주황 점 — 관광지(흰 점)와 색으로 구분한다 */
   FOOD.forEach((f,fi)=>{
@@ -1674,8 +1724,10 @@ function drawPoi(){
       icon:L.divIcon({className:'poi food'+(f.kind==='카페'?' cafe':'')+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+f.n+'</span>'})})
       .on('click',function(){ showInfo({kind:'food',idx:fi}); markSel(this); })
-      .addTo(poiLyr);
+      .addTo(poiLyr)._prio=f.pick?3:2;
   });
+  /* 그린 직후 한 번 정리 — 마커 요소가 DOM 에 붙은 뒤여야 한다 */
+  setTimeout(declutter,0);
 }
 
 function renderMap(i){
@@ -3003,6 +3055,26 @@ renderFood();
 setTimeout(function(){ try{ if(map){ map.invalidateSize(); renderMap(curDay); } }catch(e){} },120);
 setTimeout(function(){ if(buildState!=='ok') setBuild('vec'); },6000);
 window.addEventListener('unhandledrejection',function(e){ if(e&&e.preventDefault) e.preventDefault(); });
+
+/* ══════ 오프라인 ══════
+   한 번 연 뒤에는 신호가 끊긴 중산간에서도 일정·맛집·여행지·준비물이 그대로 열린다.
+   지도 타일과 경로 계산만 인터넷이 필요하다. */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+/* 인터넷이 끊기면 지도가 왜 안 나오는지 알려 준다 */
+(function(){
+  const bar=document.createElement('div');
+  bar.className='offbar'; bar.hidden=true;
+  bar.textContent='인터넷 연결이 없습니다 — 지도는 안 나오지만 일정·맛집·여행지는 그대로 보입니다';
+  document.body.appendChild(bar);
+  const sync=()=>{ bar.hidden=navigator.onLine; };
+  window.addEventListener('online',sync);
+  window.addEventListener('offline',sync);
+  sync();
+})();
 </script>
 </body>
 </html>
