@@ -809,6 +809,34 @@ button{font-family:inherit;font-size:inherit;color:inherit}
   padding:9px 11px;background:var(--bg);border-radius:9px}
 .faddr{margin:8px 0 0;font-size:11.5px;color:var(--faint);line-height:1.5}
 .mapinfo .fnote{font-size:12px;padding:8px 10px}
+/* ═══ 분류 기준 전환 — 지역 / 음식 / 가격 ═══ */
+.faxbar{display:inline-flex;gap:2px;padding:3px;margin:0 0 11px;
+  background:var(--linesoft);border-radius:10px}
+.fax{
+  appearance:none;border:none;cursor:pointer;font-family:inherit;
+  padding:6px 15px;border-radius:8px;background:none;color:var(--muted);
+  font-size:12.5px;font-weight:600;letter-spacing:-.01em;transition:background .14s,color .14s;
+}
+.fax.on{background:var(--card);color:var(--sea);box-shadow:0 1px 3px rgba(19,33,43,.12)}
+/* ═══ 맛집 카드 — 여행 일정과 같은 접기 방식 ═══ */
+details.fcard{padding:0;overflow:hidden}
+details.fcard[open]{border-color:var(--sea2);box-shadow:0 3px 14px rgba(21,97,109,.10)}
+details.fcard.pick[open]{border-color:var(--amber)}
+summary.fhead2{
+  list-style:none;cursor:pointer;padding:13px 14px;
+  display:grid;grid-template-columns:1fr 18px;gap:4px 10px;align-items:center;
+}
+summary.fhead2::-webkit-details-marker{display:none}
+.fhead2 .ftit{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}
+.fhead2 .ftit b{font-size:15.5px;font-weight:600;letter-spacing:-.015em}
+.fhead2 .fsub{grid-column:1;font-size:12px;color:var(--muted);line-height:1.45}
+.fhead2 .chev{grid-column:2;grid-row:1/3;width:18px;height:18px;color:var(--faint);transition:transform .2s}
+details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
+.fhead2 .fpick{
+  padding:1px 6px;font-size:10px;border-radius:999px;background:var(--amber);color:#fff;font-weight:700;
+}
+.fbody2{padding:0 14px 14px;border-top:1px solid var(--linesoft)}
+.fbody2 .fmenu{margin-top:0;border-top:none;padding-top:11px}
 #map{height:31vh;min-height:186px;max-height:280px;background:#DCEAEF;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 #map svg.fb{display:block;width:100%;height:100%}
@@ -1091,7 +1119,8 @@ summary.fhead .chev{flex:0 0 18px}
 
  <div id="foodview" hidden>
    <h2 class="vh">맛집</h2>
-   <div class="fbar" id="foodfilter" role="tablist" aria-label="지역별 보기"></div>
+   <div class="faxbar" id="foodaxis" role="tablist" aria-label="분류 기준"></div>
+   <div class="fbar" id="foodfilter" role="tablist" aria-label="분류별 보기"></div>
    <p class="fcount" id="foodcount"></p>
    <div id="foodcards"></div>
  </div>
@@ -1890,131 +1919,131 @@ const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
    menu [[메뉴명,금액]] — 확인된 금액만 적는다. 비우면 '미등록'으로 표시된다.
    hours 영업시간   tel 전화   note 메모                                  */
 const FOOD=[
- {n:'범일분식',zone:'남원',main:'순대백반',pick:false,
+ {n:'범일분식',zone:'남원',theme:'국밥·해장',main:'순대백반',pick:false,
   ll:[33.278457,126.716913],addr:'서귀포시 남원읍 태위로 658 1층',
   menu:[['순대백반','9,000원'],['순대한접시','11,000원']],
   note:'들깨가루가 듬뿍 들어가 죽처럼 걸쭉하고 묵직한 제주식 순대국밥 노포입니다. 국물 맛이 강하고 피순대 특유의 녹진함이 있어 호불호가 강하게 갈립니다. 재료 소진 시 조기 마감(보통 오후 1~2시)됩니다.'},
- {n:'서귀포하르방식당',zone:'서귀포시내',main:'갈치조림정식',pick:false,
+ {n:'서귀포하르방식당',zone:'서귀포시내',theme:'해산물·조림',main:'갈치조림정식',pick:false,
   ll:[33.247083,126.560103],addr:'서귀포시 태평로353번길 11 1층',
   menu:[['갈치조림정식(돌솥밥 포함)','15,000원'],['하르방 토속정식 2인','변동']],
   note:'매일올레시장 인근 가성비 훌륭한 백반집입니다. 갈치조림에 솥밥이 제공되어 인기가 많으나, 할머니 사장님의 투박하고 무뚝뚝한 접객 스타일에 대한 호불호 리뷰가 가끔 존재합니다.'},
- {n:'산방산초가집',zone:'안덕',main:'초가집 밥상',pick:false,
+ {n:'산방산초가집',zone:'안덕',theme:'정식·백반',main:'초가집 밥상',pick:false,
   ll:[33.240684,126.300195],addr:'서귀포시 안덕면 사계로 113 1층',
   menu:[['초가집 밥상(1인)','22,000~27,000원'],['전복해물전골(2인)','45,000원']],
   note:'전복해물전골과 생선구이, 전복회 등이 푸짐하게 한 상 차려지는 곳입니다. 해산물이 싱싱하여 가족 단위 방문이 많지만 주말 피크 타임에는 재료가 조기 소진될 수 있습니다.'},
- {n:'진미명가',zone:'안덕',main:'다금바리 회',pick:false,
+ {n:'진미명가',zone:'안덕',theme:'회',main:'다금바리 회',pick:false,
   ll:[33.228347,126.307411],addr:'서귀포시 안덕면 사계남로 167',
   menu:[['다금바리 회 1kg','시가 · 고가']],
   note:'대한민국 다금바리 명인 강창건 셰프의 식당입니다. 최고의 다금바리 특수부위 특허 기술을 맛볼 수 있으나, 가격대가 매우 높고 밑반찬이 화려한 스끼다시가 아닌 전통 향토식 위주라 젊은 층에선 가성비 논란이 종종 있습니다.'},
- {n:'산계원식당',zone:'안덕',main:'토종닭백숙',pick:false,
+ {n:'산계원식당',zone:'안덕',theme:'고기',main:'토종닭백숙',pick:false,
   ll:[33.225409,126.299485],addr:'서귀포시 안덕면 형제해안로 80',
   menu:[['토종닭백숙','변동'],['오리백숙','변동']],
   note:'사계리 해양파출소 옆에 위치한 한적한 백반 및 백숙 전문점입니다. 주로 로컬 주민들이 몸보신용으로 예약 후 방문하는 숨은 식당입니다.'},
- {n:'춘미향식당',zone:'안덕',main:'춘미향 정식',pick:false,
+ {n:'춘미향식당',zone:'안덕',theme:'정식·백반',main:'춘미향 정식',pick:false,
   ll:[33.231438,126.296492],addr:'서귀포시 안덕면 산방로 378 1층',
   menu:[['춘미향 정식(1인)','22,000~23,000원'],['갈치조림 소 2인','변동']],
   note:'흑돼지 목살구이, 생옥돔튀김, 전복성게미역국, 멜조림이 세트로 나오는 가성비 뛰어난 향토 정식 맛집입니다. 대기줄이 꽤 있으며 노포 특유의 어수선한 실내 분위기와 위생에 민감하다면 평범하게 느낄 수 있습니다.'},
- {n:'한라전복 본점',zone:'대정',main:'전복돌솥밥',pick:true,
+ {n:'한라전복 본점',zone:'대정',theme:'해산물·조림',main:'전복돌솥밥',pick:true,
   ll:[33.230484,126.245195],addr:'서귀포시 대정읍 대한로 33 1층 (모슬포)',
   menu:[['전복돌솥밥','12,000원'],['전복뚝배기','12,000원'],['전복버터구이 세트','40,000원']],
   note:'자체 양식장 직판으로 신선한 활전복 요리를 제주에서 가장 저렴하고 푸짐하게 파는 도민 맛집입니다. 내장을 가득 넣어 고소한 돌솥밥이 시그니처이며, 부모님 모시고 가기에 가장 안전하고 실패 없는 향토 식당입니다.'},
- {n:'가시식당',zone:'표선',main:'두루치기 정식',pick:false,
+ {n:'가시식당',zone:'표선',theme:'고기',main:'두루치기 정식',pick:false,
   ll:[33.353082,126.771443],addr:'서귀포시 표선면 가시로565번길 22',
   menu:[['두루치기 정식(1인)','10,000원'],['몸국','10,000원']],
   note:'제주식 흑돼지 두루치기를 시키면 멜젓과 미니 몸국이 함께 나오는 극가성비 노포입니다. 파채, 콩나물, 무생채를 고기와 함께 볶아 먹는 방식이며, 시설이 매우 오래되었고 일하시는 어르신들이 다소 뚝뚝한 편입니다.'},
- {n:'당케올레국수',zone:'표선',main:'보말칼국수',pick:false,
+ {n:'당케올레국수',zone:'표선',theme:'국수·면',main:'보말칼국수',pick:false,
   ll:[33.325297,126.843334],addr:'서귀포시 표선면 민속해안로 584 1층',
   menu:[['보말칼국수','12,000원'],['보말죽','13,000원'],['고기국수','8,000원']],
   note:'방송에 소개된 유명 맛집입니다. 칼국수 면 아래에 밥알이 깔려 나오는 걸쭉하고 칼칼한 국물이 특징입니다. 깔끔한 국수 면발 자체를 기대한 여행객들에게는 호불호가 갈리며 웨이팅이 긴 편입니다.'},
- {n:'성읍칠십리식당',zone:'표선',main:'흑돼지 오겹살',pick:false,
+ {n:'성읍칠십리식당',zone:'표선',theme:'고기',main:'흑돼지 오겹살',pick:false,
   ll:[33.389199,126.80125],addr:'서귀포시 표선면 성읍정의현로 74 1층',
   menu:[['흑돼지 일반/오겹살','20,000원 선'],['꿩감자국수','변동']],
   note:'귤나무 초벌구이로 고기에 은은한 향을 입혀 구워 먹는 이색 고깃집입니다. 고사리와 함께 구워 먹는 맛이 일품이나 삼겹살의 비계 비율이 날마다 다소 복불복이라는 후기가 있습니다.'},
- {n:'편운산장펜션식당',zone:'성산',main:'옥돔구이 정식',pick:false,
+ {n:'편운산장펜션식당',zone:'성산',theme:'정식·백반',main:'옥돔구이 정식',pick:false,
   ll:[33.437597,126.875082],addr:'서귀포시 성산읍 서성일로 898-38 1층',
   menu:[['옥돔구이 정식','변동'],['갈치조림','변동']],
   note:'한옥 느낌의 고즈넉한 편운산장 내부에서 운영되는 식당입니다. 창밖 정원 뷰가 아름답고 정갈한 시골 반찬 스타일로 조용하게 식사하기 좋습니다.'},
- {n:'부뚜막식당 성산',zone:'성산',main:'갈치조림',pick:true,
+ {n:'부뚜막식당 성산',zone:'성산',theme:'해산물·조림',main:'갈치조림',pick:true,
   ll:[33.445091,126.913533],addr:'서귀포시 성산읍 고성오조로 11 1층',
   menu:[['갈치조림 소(2인)','39,000원']],
   note:'갈치조림을 주문하면 통갈치구이를 서비스로 내어주는 가성비 식당입니다. 사장님이 무척 친절하시며, 웨이팅에 지친 현지인과 여행객들이 정착하는 숨은 진주 같은 곳입니다.'},
- {n:'맛나식당',zone:'성산',main:'갈치조림',pick:false,
+ {n:'맛나식당',zone:'성산',theme:'해산물·조림',main:'갈치조림',pick:false,
   ll:[33.448537,126.916014],addr:'서귀포시 성산읍 동류암로 41 1층',
   menu:[['갈치조림','14,000원'],['고등어조림','11,000원']],
   note:'제주에서 가장 유명한 조림 맛집 중 하나이지만, 새벽 6시 전후로 현장 대기표를 받아야 하는 극악의 웨이팅을 자랑합니다. 인원수에 맞춰 갈치와 고등어를 섞어 주문하게 되며, 접객이 불친절하다는 리뷰가 지속적으로 올라옵니다.'},
- {n:'그리운바다 성산포',zone:'성산',main:'고등어회',pick:false,
+ {n:'그리운바다 성산포',zone:'성산',theme:'회',main:'고등어회',pick:false,
   ll:[33.469832,126.930054],addr:'서귀포시 성산읍 성산등용로 94',
   menu:[['고등어회 단품','30,000~40,000원 선'],['은갈치회','변동']],
   note:'성산항 근처 고등어회와 은갈치회 전문점입니다. 특제 소스에 고등어회를 깻잎과 와사비 밥에 싸 먹는 방식이 이색적이며 비리지 않고 깔끔하다는 평이 많습니다.'},
- {n:'목화휴게소편의점',zone:'성산',main:'맥반석 준치',pick:false,
+ {n:'목화휴게소편의점',zone:'성산',theme:'이색·간식',main:'맥반석 준치',pick:false,
   ll:[33.481782,126.90168],addr:'서귀포시 성산읍 해맞이해안로 2526',
   menu:[['맥반석 준치(오징어)','14,000~16,000원 선']],
   note:'성산 해안도로변에서 해풍에 말린 준치를 맥반석에 구워 주는 이색 쉼터입니다. 최근 주인 교체 후 가격이 올랐고, 결제 방식과 요금 관련 부정적인 후기가 있으니 주문 전 가격과 결제 방법을 먼저 확인하세요.'},
- {n:'동부식당',zone:'조천',main:'정식 백반',pick:false,
+ {n:'동부식당',zone:'조천',theme:'정식·백반',main:'정식 백반',pick:false,
   ll:[33.457398,126.70367],addr:'제주시 조천읍 번영로 1619 1층',
   menu:[['정식 백반','9,000~10,000원 선']],
   note:'대흘리 인근 도로변에 위치한 전형적인 기사식당 스타일의 도민 정식집입니다. 매일 바뀌는 기본 국과 고기반찬, 생선구이로 가볍게 한 끼 해결하는 곳입니다.'},
- {n:'선플방주할머니식당',zone:'조천',main:'삼대두부부침',pick:false,
+ {n:'선플방주할머니식당',zone:'조천',theme:'두부·채식',main:'삼대두부부침',pick:false,
   ll:[33.484584,126.700216],addr:'제주시 조천읍 선교로 212 1층',
   menu:[['삼대두부부침','10,000원'],['검은콩국수','10,000원'],['도토리묵밥','9,000원']],
   note:'우리콩과 거문오름 청정수로 직접 만든 손두부 전문점입니다. 자극적이지 않고 담백한 것이 특징이라 어르신들이 매우 좋아하시며 힐링 푸드로 꼽힙니다.'},
- {n:'타코마씸',zone:'구좌',main:'흑돼지 타코',pick:false,
+ {n:'타코마씸',zone:'구좌',theme:'이색·간식',main:'흑돼지 타코',pick:false,
   ll:[33.55509,126.797214],addr:'제주시 구좌읍 해맞이해안로 474 1층 102호 (월정리)',
   menu:[['흑돼지 타코 2pcs','11,000원'],['과카몰레 하프','11,000원']],
   note:'월정리 해변 앞 멕시칸 타코집입니다. 제주 흑돼지를 활용한 타코 소스가 매콤 짭조름하여 젊은 여행객들의 맥주 안주로 평이 높습니다. 향토음식점은 아닙니다.'},
- {n:'소라횟집',zone:'구좌',main:'활우럭매운탕',pick:false,
+ {n:'소라횟집',zone:'구좌',theme:'해산물·조림',main:'활우럭매운탕',pick:false,
   ll:[33.53234,126.846357],addr:'제주시 구좌읍 해맞이해안로 1240-3 1층',
   menu:[['활우럭매운탕','15,000원'],['소라물회','15,000원']],
   note:'구좌 해안도로 노포 횟집입니다. 된장 베이스에 무를 듬뿍 넣어 달큰하고 깊은 맛을 내는 우럭매운탕이 메인입니다. 손님이 몰릴 때 서빙 동선이 꼬여 불친절함을 느꼈다는 후기가 종종 있습니다.'},
- {n:'인손',zone:'구좌',main:'숙성 참치회',pick:false,
+ {n:'인손',zone:'구좌',theme:'회',main:'숙성 참치회',pick:false,
   ll:[33.52254,126.855653],addr:'제주시 구좌읍 세화4길 10 1층',
   menu:[['참치회 소','45,000원'],['딱새우회','변동']],
   note:'세화해변 안쪽 골목의 숙성 참치 및 딱새우회 이자카야입니다. 깔끔하고 퀄리티가 우수하나 공간이 협소하여 노키즈존으로 운영되며 혼술 또는 커플 방문이 많습니다.'},
- {n:'함덕뚝배기',zone:'조천',main:'전복뚝배기',pick:false,
+ {n:'함덕뚝배기',zone:'조천',theme:'해산물·조림',main:'전복뚝배기',pick:false,
   ll:[33.542427,126.670315],addr:'제주시 조천읍 조함해안로 538 1층',
   menu:[['전복뚝배기','15,000원'],['문어뚝배기','16,000원']],
   note:'함덕해수욕장 바로 앞에 위치하여 아침 식사가 가능한 해물 뚝배기 전문점입니다. 국물이 짜지 않고 깔끔하고 시원하며 전복이 살아 움직여 시각적 만족도가 높습니다.'},
- {n:'선장과 해녀',zone:'조천',main:'자연산 활어회',pick:false,
+ {n:'선장과 해녀',zone:'조천',theme:'회',main:'자연산 활어회',pick:false,
   ll:[33.544952,126.662161],addr:'제주시 조천읍 조함해안로 432-19 2층',
   menu:[['자연산 활어회 코스','변동'],['스페셜','15만~20만원대']],
   note:'함덕 바다가 한눈에 들어오는 탁 트인 오션뷰 횟집입니다. 뷰가 좋아 부모님 모시고 창가 자리에 앉아 신선한 해산물을 대접하기 좋은 쾌적한 대형 매장입니다.'},
- {n:'명리동식당 본점',zone:'한경',main:'짜투리고기',pick:false,
+ {n:'명리동식당 본점',zone:'한경',theme:'고기',main:'짜투리고기',pick:false,
   ll:[33.316603,126.270425],addr:'제주시 한경면 녹차분재로 498',
   menu:[['짜투리고기(200g)','16,000원'],['흑돼지삼겹살(200g)','22,000원']],
   note:'제주 연탄구이 짜투리고기의 원조 격인 유서 깊은 도민 맛집입니다. 찌개와 고기의 퀄리티가 고르게 우수하여 고기 매니아들이 필수로 찾는 코스입니다.'},
- {n:'바당길',zone:'한림',main:'보말칼국수',pick:false,
+ {n:'바당길',zone:'한림',theme:'국수·면',main:'보말칼국수',pick:false,
   ll:[33.409757,126.258513],addr:'제주시 한림읍 한림서길 18 1층',
   menu:[['보말칼국수','10,000원'],['보말죽','10,000원'],['전복뚝배기','15,000원']],
   note:'한림항 근처 톳을 갈아 만든 면을 사용하는 보말 요리 전문점입니다. 주문 시 톳보리밥과 흑돼지 쌈장이 별미로 제공되어 인심이 좋다는 평입니다.'},
- {n:'한림칼국수',zone:'한림',main:'보말칼국수',pick:false,
+ {n:'한림칼국수',zone:'한림',theme:'국수·면',main:'보말칼국수',pick:false,
   ll:[33.415573,126.26151],addr:'제주시 한림읍 한림해안로 141 1층',
   menu:[['보말칼국수','9,000원'],['영양보말죽','9,000원'],['매콤흑돼지불고기','11,000원']],
   note:'보말칼국수의 대중화를 이끈 본점입니다. 매생이가 들어가 국물이 매우 시원하고 부드러우며 반찬 셀프 바가 잘 되어있어 깔끔하게 먹기 좋습니다.'},
- {n:'산지해장국',zone:'제주시내',main:'소고기해장국',pick:false,
+ {n:'산지해장국',zone:'제주시내',theme:'국밥·해장',main:'소고기해장국',pick:false,
   ll:[33.516363,126.528512],addr:'제주시 임항로 34 1층 (탑동)',
   menu:[['소고기해장국','10,000원'],['내장탕','11,000원']],
   note:'제주 3대 해장국 중 하나로 도민들이 아침마다 줄을 서는 곳입니다. 특히 내장탕에 곱창과 양이 뚝배기가 넘칠 정도로 가득 들어차 있어 푸짐합니다. 마늘을 꼭 넣어 드셔야 진가를 발휘합니다.'},
- {n:'스시도모다찌 칠성점',zone:'제주시내',main:'회전초밥',pick:false,
+ {n:'스시도모다찌 칠성점',zone:'제주시내',theme:'회',main:'회전초밥',pick:false,
   ll:[33.513501,126.525814],addr:'제주시 관덕로13길 3 1층',
   menu:[['회전초밥 접시당','2,200원~']],
   note:'제주시내에서 가성비 최고로 꼽히는 회전초밥 전문점입니다. 네타(생선)의 크기가 크고 싱싱하여 도민 대학생과 직장인들로 항상 웨이팅이 걸리는 일식 맛집입니다.'},
- {n:'오현불백',zone:'제주시내',main:'돼지불백',pick:true,
+ {n:'오현불백',zone:'제주시내',theme:'고기',main:'돼지불백',pick:true,
   ll:[33.511031,126.529605],addr:'제주시 성지로 58-2 상가 1층 (동문시장 인근)',
   menu:[['돼지불백','14,000원'],['한치돼지불백','16,000원']],
   note:'동문시장 근처의 노포 골목 맛집으로 양념이 강하지 않고 정갈합니다. 특히 부드러운 한치와 돼지고기가 섞인 한치불백은 부모님들이 편하게 쌈을 싸서 드시기에 좋으며, 밑반찬으로 나오는 양념게장이 뛰어납니다.'},
- {n:'흑본오겹 함덕점',zone:'조천',main:'흑돼지 오겹살',pick:false,
+ {n:'흑본오겹 함덕점',zone:'조천',theme:'고기',main:'흑돼지 오겹살',pick:false,
   ll:[33.543614,126.658702],addr:'제주시 조천읍 신북로 454 1층',
   menu:[['꽃목살 / 황제살 / 등심덧살','변동']],
   note:'함덕해수욕장 인근의 프리미엄 흑돼지 전문점입니다. 직원이 직접 최적의 굽기로 구워주어 가족 식사 시 손 갈 일 없이 편하게 식사할 수 있습니다.'},
- {n:'고집돌우럭 함덕점',zone:'조천',main:'우럭조림',pick:false,
+ {n:'고집돌우럭 함덕점',zone:'조천',theme:'해산물·조림',main:'우럭조림',pick:false,
   ll:[33.54381,126.663095],addr:'제주시 조천읍 신북로 491-9 2층',
   menu:[['런치 스페셜 A/B/C','24,000~30,000원대']],
   note:'시래기 우럭조림과 낭푼밥(쌈밥)이 세트로 나오는 대형 퓨전 향토 음식점입니다. 인테리어가 화려하고 부모님 대접용 세팅이 잘 되어 있으나, 마케팅이 심해 순수 로컬 식당을 찾는 분들에게는 다소 상업적이라는 지적을 받습니다.'},
- {n:'전원일기 효돈점',zone:'서귀포시내',main:'쌈밥 정식',pick:true,
+ {n:'전원일기 효돈점',zone:'서귀포시내',theme:'정식·백반',main:'쌈밥 정식',pick:true,
   ll:[33.260345,126.616357],addr:'서귀포시 일주동로 8153 1층',
   menu:[['전원일기 쌈밥 정식','12,000~13,000원 선']],
   note:'도민 전용 쌈밥집입니다. 돔베고기(수육)가 잡내 없이 아주 연하게 삶아져 나오고, 갈치속젓, 제주식 강된장, 신선한 야채 쌈이 푸짐하게 깔려 부모님들이 속 편하게 식사할 수 있는 가성비 좋은 식당입니다.'},
- {n:'순천미향 제주산방산본점',zone:'안덕',main:'삼합(문어+전복+흑돼지)',pick:false,
+ {n:'순천미향 제주산방산본점',zone:'안덕',theme:'해산물·조림',main:'삼합(문어+전복+흑돼지)',pick:false,
   ll:[33.235692,126.312481],addr:'서귀포시 안덕면 사계남로216번길 24-7',
   menu:[['순천미향 삼합 2인','45,000원']],
   note:'산방산 바로 아래 위치한 이색 조림 맛집입니다. 과일 향이 나는 특제 매콤달콤한 소스에 문어, 전복, 흑돼지를 자작하게 졸여 치즈를 얹어 먹는 퓨전 스타일입니다. 인스타 유명세로 대기가 길고 전통 향토 조림을 생각하면 다소 달게 느껴질 수 있습니다.'}
@@ -2027,41 +2056,84 @@ document.getElementById('foodlist').innerHTML=CAND.map(f=>
  }</span><span class="v"><a href="${telHref(f.tel)}">${f.tel}</a></span></li>`).join('');
 
 /* ══════ 맛집 탭 ══════ */
-let foodZone='전체';
-function foodZones(){ return ['전체',...[...new Set(FOOD.map(f=>f.zone))]]; }
+/* ══════ 맛집 분류 ══════
+   축이 셋이다 — 지역 / 음식 / 가격.
+   가격대는 메뉴에 적힌 금액에서 자동으로 계산한다(가장 싼 메뉴 기준). */
+const BANDS=['1만원 이하','1만~2만원','2만원 이상','시가·변동'];
+function priceBand(f){
+  let min=Infinity;
+  (f.menu||[]).forEach(m=>{
+    const s=String(m[1]).replace(/,/g,'');
+    /* "15만~20만 원대" 처럼 만 단위로 적힌 것도 잡는다 */
+    (s.match(/\d+만/g)||[]).forEach(x=>{ const v=parseInt(x,10)*10000; if(v<min) min=v; });
+    (s.match(/\d{4,}/g)||[]).forEach(x=>{ const v=+x; if(v<min) min=v; });
+  });
+  if(min===Infinity) return '시가·변동';
+  if(min<=10000) return '1만원 이하';
+  if(min<=20000) return '1만~2만원';
+  return '2만원 이상';
+}
+const AXES={
+  zone:{label:'지역', key:f=>f.zone, order:null},
+  theme:{label:'음식', key:f=>f.theme, order:null},
+  band:{label:'가격', key:f=>priceBand(f), order:BANDS},
+};
+let foodAxis='zone', foodZone='전체';
+function axisValues(){
+  const a=AXES[foodAxis];
+  const vals=[...new Set(FOOD.map(a.key))];
+  if(a.order) vals.sort((x,y)=>a.order.indexOf(x)-a.order.indexOf(y));
+  return ['전체',...vals];
+}
+function foodList(){
+  if(foodZone==='전체') return FOOD;
+  return FOOD.filter(f=>AXES[foodAxis].key(f)===foodZone);
+}
+function renderFoodAxis(){
+  const bar=document.getElementById('foodaxis'); if(!bar) return;
+  bar.innerHTML=Object.entries(AXES).map(([k,a])=>
+    `<button class="fax${k===foodAxis?' on':''}" type="button" role="tab"
+      aria-selected="${k===foodAxis}" data-ax="${k}">${a.label}</button>`).join('');
+}
 function renderFoodFilter(){
   const bar=document.getElementById('foodfilter'); if(!bar) return;
-  bar.innerHTML=foodZones().map(z=>{
-    const n=z==='전체'?FOOD.length:FOOD.filter(f=>f.zone===z).length;
+  const key=AXES[foodAxis].key;
+  bar.innerHTML=axisValues().map(z=>{
+    const n=z==='전체'?FOOD.length:FOOD.filter(f=>key(f)===z).length;
     return `<button class="fchip${z===foodZone?' on':''}" type="button" role="tab"
       aria-selected="${z===foodZone}" data-z="${z}">${z} ${n}</button>`;}).join('');
 }
 function renderFoodCards(){
   const box=document.getElementById('foodcards'), cnt=document.getElementById('foodcount');
   if(!box) return;
-  const list=foodZone==='전체'?FOOD:FOOD.filter(f=>f.zone===foodZone);
+  const list=foodList();
   if(cnt) cnt.textContent=`${list.length}곳${foodZone==='전체'?'':' · '+foodZone}`;
-  if(!list.length){ box.innerHTML='<p class="fempty">해당 지역에 등록된 맛집이 없습니다.</p>'; return; }
+  if(!list.length){ box.innerHTML='<p class="fempty">해당 분류에 등록된 맛집이 없습니다.</p>'; return; }
+  /* 여행 일정처럼 접어 두고, 누르면 펼쳐지면서 지도가 그 자리로 간다 */
   box.innerHTML=list.map(f=>{
     const idx=FOOD.indexOf(f);
     const menu=f.menu&&f.menu.length
       ? `<ul class="fmenu">${f.menu.map(m=>
           `<li><span>${m[0]}</span><span class="fprice${m[1]?'':' tbd'}">${m[1]||'미확인'}</span></li>`).join('')}</ul>`
       : `<ul class="fmenu"><li><span style="color:var(--faint)">메뉴·가격 미등록</span></li></ul>`;
-    return `<div class="fcard${f.pick?' pick':''}">
-      <div class="fcard-h">${f.pick?'<span class="fpick">★ 강추</span>':''}<h3>${f.n}</h3><span class="fzone">${f.zone}</span></div>
-      ${f.main?`<span class="fmain">${f.main}</span>`:''}
-      ${menu}
-      ${f.hours?`<p class="fmeta">${apText(f.hours)}</p>`:''}
-      ${f.note?`<p class="fnote">${apText(f.note)}</p>`:''}
-      ${f.addr?`<p class="faddr">${f.addr}</p>`:''}
-      <div class="fact">
-        ${f.tel?`<a href="${telHref(f.tel)}">전화 ${f.tel}</a>`:''}
-        ${f.ll?`<button type="button" data-fmap="${idx}">지도에서 보기</button>`:''}
+    const sub=[f.main,foodAxis==='band'?f.zone:priceBand(f)].filter(Boolean).join(' · ');
+    return `<details class="fcard${f.pick?' pick':''}" data-fi="${idx}">
+      <summary class="fhead2">
+        <span class="ftit">${f.pick?'<span class="fpick">★</span>':''}<b>${f.n}</b>
+          <span class="fzone">${f.zone}</span></span>
+        <span class="fsub">${sub}</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </summary>
+      <div class="fbody2">
+        ${menu}
+        ${f.hours?`<p class="fmeta">${apText(f.hours)}</p>`:''}
+        ${f.note?`<p class="fnote">${apText(f.note)}</p>`:''}
+        ${f.addr?`<p class="faddr">${f.addr}</p>`:''}
+        ${f.tel?`<div class="fact"><a href="${telHref(f.tel)}">전화 ${f.tel}</a></div>`:''}
       </div>
-    </div>`;}).join('');
+    </details>`;}).join('');
 }
-function renderFood(){ renderFoodFilter(); renderFoodCards(); }
+function renderFood(){ renderFoodAxis(); renderFoodFilter(); renderFoodCards(); }
 
 /* ══════ 오전/오후 표기 ══════ */
 function ap12(h,m){ h=+h; const label=h<12?'오전':'오후'; let hh=h%12; if(hh===0)hh=12; return [label,hh+':'+m]; }
@@ -2165,8 +2237,8 @@ function showInfo(t){
 }
 
 /* ══════ 맛집 탭의 지도 ══════
-   일정용 경로·번호핀은 걷어내고, 지금 걸러진 맛집들이 다 들어오게 맞춘다. */
-function foodList(){ return foodZone==='전체'?FOOD:FOOD.filter(f=>f.zone===foodZone); }
+   일정용 경로·번호핀은 걷어내고, 지금 걸러진 맛집들이 다 들어오게 맞춘다.
+   foodList() 는 위 분류 축(지역/음식/가격)을 그대로 따른다. */
 function renderFoodMap(){
   if(!map||!routeLyr||!pinLyr||!poiLyr) return;
   try{
@@ -2240,17 +2312,28 @@ document.getElementById('foodfilter').addEventListener('click',e=>{
   renderFoodCards(); hideInfo(); renderFoodMap();
 });
 /* 지도에서 보기 — 맛집 탭에 머문 채로 지도만 확대한다 */
-document.getElementById('foodcards').addEventListener('click',e=>{
-  const b=e.target.closest('[data-fmap]'); if(!b) return;
-  const i=+b.dataset.fmap, f=FOOD[i];
+/* 분류 기준 전환 — 지역 / 음식 / 가격 */
+document.getElementById('foodaxis').addEventListener('click',e=>{
+  const b=e.target.closest('.fax'); if(!b) return;
+  if(b.dataset.ax===foodAxis) return;
+  foodAxis=b.dataset.ax; foodZone='전체';
+  renderFood(); hideInfo(); renderFoodMap();
+});
+
+/* 맛집 카드 — 여행 일정과 같은 방식.
+   하나를 열면 나머지는 닫히고, 열린 곳으로 지도가 간다. */
+document.getElementById('foodcards').addEventListener('toggle',e=>{
+  const el=e.target;
+  if(el.tagName!=='DETAILS'||!el.open) return;
+  document.querySelectorAll('#foodcards details[open]').forEach(x=>{ if(x!==el) x.open=false; });
+  const f=FOOD[+el.dataset.fi];
   if(!f||!f.ll) return;
-  showInfo({kind:'food',idx:i});
+  showInfo({kind:'food',idx:+el.dataset.fi});
+  /* setView(animate:false) — flyTo 는 앞선 애니메이션에 눌려 무시되는 일이 잦다 */
+  try{ if(map){ map.stop(); map.setView(f.ll,15,{animate:false}); } }catch(e){}
   const mz=document.getElementById('mapzone');
   if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
-  /* flyTo 는 앞선 애니메이션이나 invalidateSize 에 눌려 무시되는 일이 잦다.
-     연달아 눌러도 항상 그 식당으로 가도록 애니메이션 없이 즉시 이동한다. */
-  try{ if(map){ map.stop(); map.setView(f.ll,15,{animate:false}); } }catch(e){}
-});
+},true);
 
 initMap();
 render(0);
