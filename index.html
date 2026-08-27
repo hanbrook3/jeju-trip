@@ -928,6 +928,13 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .leaflet-control-attribution a{color:#8B989F !important;text-decoration:none !important}
 .leaflet-control-attribution:hover{background:rgba(255,255,255,.92) !important;color:#5D6B74 !important}
 
+.mapall{
+  position:absolute;right:22px;bottom:18px;z-index:500;
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;font-size:11.5px;font-weight:600;color:var(--sea);cursor:pointer;
+  box-shadow:0 1px 5px rgba(0,0,0,.14);
+}
+.mapzone.hid .mapall{display:none}
 .maptoggle{
   position:absolute;right:22px;top:8px;z-index:500;
   background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
@@ -944,6 +951,8 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .build.vec{color:#9A6B10;border-color:#E7D5AE;background:rgba(253,247,235,.92)}
 .mapzone.hid #map{display:none}
 .mapzone.hid .build{display:none}
+/* 지도가 정상이면 배지는 알릴 것이 없다. 실패했을 때만 재시도 버튼으로 남는다. */
+.build.ok{display:none}
 .mapzone.hid{padding-bottom:8px}
 .mapzone.hid .maptoggle{
   position:static;display:block;width:100%;box-shadow:none;
@@ -969,7 +978,12 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 /* 날 소개 */
 /* 하루 요약 — 문장 하나와 숫자 셋뿐이라 자리를 많이 차지할 이유가 없다.
    전에는 3칸짜리 표라 화면의 절반 가까이를 먹었다. */
-.dayintro{padding:12px 14px}
+.dayintro{
+  display:block;width:100%;text-align:left;position:relative;
+  appearance:none;background:none;border:none;font-family:inherit;color:inherit;
+  padding:12px 14px;cursor:pointer;
+}
+
 .dayintro h2{font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;
   font-size:17px;font-weight:700;margin:0 0 3px;letter-spacing:-.02em;line-height:1.3}
 .dayintro p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
@@ -1265,6 +1279,7 @@ summary.fhead .chev{flex:0 0 18px}
     <div id="map"></div>
     <button class="build" id="build" type="button">B9</button>
     <button class="maptoggle" id="maptoggle" aria-expanded="true">지도 접기</button>
+    <button class="mapall" id="mapall" type="button">전체보기</button>
     <div class="legend" id="legend">
       <span><i class="lg-trip"></i>여행지</span>
       <span><i class="lg-spot"></i>그 밖의 명소</span>
@@ -1280,10 +1295,12 @@ summary.fhead .chev{flex:0 0 18px}
 
 <main class="wrap">
  <div id="tripview" hidden>
-  <section class="card"><div class="dayintro">
-    <h2 id="dTitle"></h2><p id="dSub"></p>
-    <div class="dstats" id="dStats"></div>
-  </div></section>
+  <section class="card">
+    <button class="dayintro" id="dayintro" type="button" aria-label="지도를 이 날 전체 범위로 되돌리기">
+      <h2 id="dTitle"></h2><p id="dSub"></p>
+      <div class="dstats" id="dStats"></div>
+    </button>
+  </section>
 
     <div class="tl" id="tl"></div>
  </div>
@@ -1662,7 +1679,7 @@ function initMap(){
   try{
     map=L.map('map',{center:[33.375,126.545],zoom:9,minZoom:8.5,maxZoom:17,
       zoomSnap:.25,zoomDelta:.5,zoomControl:false,attributionControl:false});
-    L.control.zoom({position:'bottomright'}).addTo(map);
+    /* +/- 버튼은 두지 않는다 — 손가락으로 확대·축소가 된다 */
     L.control.attribution({position:'bottomleft',prefix:false}).addTo(map);
     /* 벡터 밑그림은 타일보다 아래 층에 둔다 — 타일이 오면 자연히 덮이고, 안 오면 그대로 보인다 */
     map.createPane('vecpane');
@@ -3067,6 +3084,24 @@ document.getElementById('foodfilter').addEventListener('click',e=>{
   renderFoodCards(); hideInfo(); renderFoodMap();
 });
 /* 지도에서 보기 — 맛집 탭에 머문 채로 지도만 확대한다 */
+/* 지금 탭에 맞는 전체 범위로 되돌린다 */
+function fitCurrent(){
+  hideInfo();
+  document.querySelectorAll('#tl details.stop[open],#spotcards details[open],#foodcards details[open]')
+    .forEach(x=>x.open=false);
+  try{
+    if(!map) return;
+    map.stop();
+    if(curMode==='food') renderFoodMap();
+    else if(curMode==='spot') renderSpotMap();
+    else renderMap(curDay);
+  }catch(e){}
+}
+document.getElementById('mapall').addEventListener('click',fitCurrent);
+
+/* 하루 요약을 누르면 확대된 지도를 그날 전체가 보이게 되돌린다 */
+document.getElementById('dayintro').addEventListener('click',fitCurrent);
+
 /* ══════ 여행지 탭 이벤트 ══════ */
 document.getElementById('spotaxis').addEventListener('click',e=>{
   const b=e.target.closest('.fax'); if(!b||b.dataset.ax===spotAxis) return;
