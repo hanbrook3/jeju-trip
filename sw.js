@@ -1,7 +1,7 @@
 /* 제주 여행 가이드 — 오프라인 지원
    앱 화면은 캐시에서 바로 꺼내 쓰고, 뒤에서 새 버전을 받아 둔다.
    지도 타일과 경로 계산은 인터넷이 필요하다 — 실패해도 앱은 열린다. */
-const CACHE = 'jeju-trip-v2';
+const CACHE = 'jeju-trip-v3';
 const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', e => {
@@ -28,8 +28,10 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  /* 지도 타일·경로 서버는 캐시하지 않는다. 양이 크고 자주 바뀐다. */
-  if (/xdworld\.vworld\.kr|router\.project-osrm\.org/.test(url.hostname)) return;
+  /* 지도 타일·경로 서버는 캐시하지 않는다. 양이 크고 자주 바뀐다.
+     OpenStreetMap 은 이용정책이 타일 저장을 금지하므로 특히 걸러야 한다.
+     별칭 호스트(xdworld1/2/3)까지 잡히도록 도메인 단위로 본다. */
+  if (/(^|\.)vworld\.kr$|(^|\.)openstreetmap\.org$|(^|\.)project-osrm\.org$/.test(url.hostname)) return;
 
   const isDoc = req.mode === 'navigate' ||
     (url.origin === location.origin && (url.pathname.endsWith('/') || url.pathname.endsWith('index.html')));
