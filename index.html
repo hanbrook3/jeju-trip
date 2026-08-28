@@ -3637,10 +3637,31 @@ function render(i){
   const d=D[i];
   document.getElementById('dTitle').textContent=d.t;
   document.getElementById('dSub').textContent=d.s;
-  document.getElementById('dStats').innerHTML=d.st.map(x=>
+  if(editOn){ window.__plan=dayPlan(i); window.__warn=dayWarns(i); }
+  /* 편집 중에는 배너 시각도 계산 결과를 따라야 한다 — 배너와 목록이 다른 시간을 말하면 안 된다.
+     가운데 항목이 1~4일차는 거리이고 5일차는 시각이므로 첫 값이 HH:MM 인 것만 손댄다.
+     배너와 정차지는 자리가 아니라 시각으로 맞춘다 — 배너 첫 항목이 첫 정차지인 날은
+     다섯 중 하나뿐이다(2일차는 배너 09:45, 첫 정차지는 09:00 펜션 조식).
+     짝이 없는 '숙소 복귀'(2·4일차)는 그 시각 앞 마지막 정차지가 밀린 만큼 함께 민다. */
+  let st=d.st;
+  if(editOn&&window.__plan){
+    const p=window.__plan;
+    st=d.st.map(function(x){
+      const 원래=hm2min(x[0]);
+      if(원래===null) return x;
+      const j=d.stops.findIndex(function(s){ return hm2min(s.t)===원래; });
+      if(j>=0) return [p.arrive[j],x[1]];
+      let 밀림=0;
+      d.stops.forEach(function(s,n){
+        const t=hm2min(s.t);
+        if(t!==null&&t<=원래) 밀림=p.arriveMin[n]-t;
+      });
+      return [min2hm(원래+밀림),x[1]];
+    });
+  }
+  document.getElementById('dStats').innerHTML=st.map(x=>
     `<span class="dst"><b>${apText(x[0])}</b> ${x[1]}</span>`).join('<i class="dsep">·</i>');
   let mi=0;
-  if(editOn){ window.__plan=dayPlan(i); window.__warn=dayWarns(i); }
   tl.innerHTML=d.stops.map((s,si)=>{
     const has=s.feat||s.design||s.see||s.steps||s.warn||s.note;
     /* 지도 핀 번호와 같은 순서 — 둘 다 좌표 있는 일정만 세므로 항상 일치한다 */
