@@ -15,7 +15,8 @@ const code = h.slice(a, b + E.length);
 const API = {};
 try {
   new Function('__out', code + '\n__out.hm2min=hm2min; __out.min2hm=min2hm;' +
-    ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;')(API);
+    ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;' +
+    ' __out.recalc=recalc;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -86,6 +87,9 @@ console.log('\n[머무는 시간 자동 채우기]');
   확인('시각을 못 읽으면 60', r[0], 60);
 }
 
+/* index.html 에서 꺼낸 배포판 일정. 아래 두 절이 함께 쓴다 */
+let D;
+
 console.log('\n[진짜 일정으로 확인]');
 {
   /* index.html 의 D 를 꺼낸다 */
@@ -100,7 +104,7 @@ console.log('\n[진짜 일정으로 확인]');
       if(c===open)depth++; else if(c===close){depth--; if(depth===0){j++;break;}} }
     return eval('('+h.slice(i+key.length,j)+')');
   }
-  const D=grab('D');
+  D=grab('D');
   /* 이동시간을 추정으로 넣고 stay 를 역산한 뒤, 그 값으로 시각을 다시 쌓으면
      원래 시각이 그대로 나와야 한다 */
   let 어긋남=0;
@@ -119,6 +123,94 @@ console.log('\n[진짜 일정으로 확인]');
     }
   });
   확인('배포판 시각을 역산했다가 다시 쌓으면 원래대로 돌아온다', 어긋남, 0);
+}
+
+console.log('\n[재계산]');
+{
+  /* 세 곳 · 이동 20분씩 · 머무는 시간 60/30/0 */
+  const stops=[{n:'가'},{n:'나'},{n:'다'}];
+  const r=API.recalc(stops,{start:'09:00',stay:[60,30,0],ride:[20,20]});
+  확인('첫 곳 도착 09:00', r.arrive[0], '09:00');
+  확인('첫 곳 출발 10:00', r.depart[0], '10:00');
+  확인('둘째 도착 10:20', r.arrive[1], '10:20');
+  확인('둘째 출발 10:50', r.depart[1], '10:50');
+  확인('셋째 도착 11:10', r.arrive[2], '11:10');
+}
+{
+  /* 머무는 시간을 30분 늘리면 그 뒤만 밀린다 */
+  const stops=[{n:'가'},{n:'나'},{n:'다'}];
+  const a=API.recalc(stops,{start:'09:00',stay:[60,30,0],ride:[20,20]});
+  const b=API.recalc(stops,{start:'09:00',stay:[90,30,0],ride:[20,20]});
+  확인('앞은 그대로', b.arrive[0], a.arrive[0]);
+  확인('뒤는 30분 밀림', b.arrive[2], '11:40');
+}
+{
+  /* 중간 시각을 못 박으면 거기부터 다시 쌓는다 */
+  const stops=[{n:'가'},{n:'나'},{n:'다'}];
+  const r=API.recalc(stops,{start:'09:00',stay:[60,30,0],ride:[20,20],pin:{1:'12:00'}});
+  확인('못 박은 곳은 그 시각', r.arrive[1], '12:00');
+  확인('그 뒤는 거기서 다시 쌓임', r.arrive[2], '12:50');
+  확인('앞은 안 건드림', r.arrive[0], '09:00');
+}
+{
+  /* 좌표가 없어 이동시간을 모르면 0 으로 본다 */
+  const stops=[{n:'가'},{n:'나'}];
+  const r=API.recalc(stops,{start:'07:10',stay:[150,0],ride:[null]});
+  확인('이동시간 null 은 0 으로', r.arrive[1], '09:40');
+}
+
+console.log('\n[진짜 일정으로 재계산]');
+/* 하루치를 recalc 에 넣을 재료. 이동시간은 추정, 머무는 시간은 배포판 시각에서 역산,
+   첫 도착은 그날 첫 정차지 시각으로 못 박는다 — 편집기가 처음 열릴 때와 같은 상태다. */
+function 하루재료(d){
+  const stops=d.stops, ride=[];
+  for(let i=0;i<stops.length-1;i++) ride.push(API.guessMin(stops[i].ll,stops[i+1].ll));
+  const stay=API.fillStay(stops,function(i){ return ride[i]; });
+  return { stops:stops, ride:ride, stay:stay,
+           start:stops[0].t, pin:{0:stops[0].t} };
+}
+/* 확인 1 — 편집이 없으면 배포판 시각 그대로 */
+{
+  let 어긋남=0, 비교=0;
+  D.forEach(function(d,di){
+    const m=하루재료(d);
+    const r=API.recalc(m.stops,{start:m.start,stay:m.stay,ride:m.ride,pin:m.pin});
+    m.stops.forEach(function(s,i){ 비교++;
+      if(r.arrive[i]!==s.t){ 어긋남++;
+        console.log('  ✗ '+(di+1)+'일차 '+s.n+' 배포판 '+s.t+' 계산 '+r.arrive[i]); } });
+  });
+  확인('확인1 · 편집이 없으면 52곳 전부 배포판 시각 그대로', [비교,어긋남], [52,0]);
+}
+/* 확인 2 — 첫 시각을 30분 늦추면 그날 전부 30분 밀린다 */
+{
+  let 어긋남=0, 비교=0;
+  D.forEach(function(d,di){
+    const m=하루재료(d);
+    const 기준=API.recalc(m.stops,{start:m.start,stay:m.stay,ride:m.ride,pin:m.pin});
+    const 늦춤=API.recalc(m.stops,{start:m.start,stay:m.stay,ride:m.ride,
+      pin:{0:API.min2hm(API.hm2min(m.stops[0].t)+30)}});
+    m.stops.forEach(function(s,i){ 비교++;
+      const 차=늦춤.arriveMin[i]-기준.arriveMin[i];
+      if(차!==30){ 어긋남++;
+        console.log('  ✗ '+(di+1)+'일차 '+s.n+' 차이 '+차+'분 (기대 30)'); } });
+  });
+  확인('확인2 · 첫 시각 30분 늦추면 52곳 전부 30분 밀림', [비교,어긋남], [52,0]);
+}
+/* 확인 3 — 가운데 한 곳에 30분 더 머물면 그 뒤만 밀린다.
+   고친 곳 자신의 도착은 그대로다 — stay 는 그 곳의 출발부터 영향을 준다. */
+{
+  const m=하루재료(D[1]);
+  const k=Math.floor(m.stops.length/2);
+  const 기준=API.recalc(m.stops,{start:m.start,stay:m.stay,ride:m.ride,pin:m.pin});
+  const 늘린stay=m.stay.slice(); 늘린stay[k]+=30;
+  const 늘림=API.recalc(m.stops,{start:m.start,stay:늘린stay,ride:m.ride,pin:m.pin});
+  let 어긋남=0;
+  m.stops.forEach(function(s,i){
+    const 차=늘림.arriveMin[i]-기준.arriveMin[i], 기대=(i<=k?0:30);
+    if(차!==기대){ 어긋남++;
+      console.log('  ✗ 2일차 '+s.n+' 차이 '+차+'분 (기대 '+기대+')'); } });
+  확인('확인3 · 2일차 「'+m.stops[k].n+'」 에 30분 더 머물면 그 앞 0분·그 뒤 30분',
+       [m.stops.length,어긋남], [10,0]);
 }
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);

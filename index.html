@@ -2724,6 +2724,26 @@ function fillStay(stops,ride){
     return Math.max(0, 다음-이곳-이동);
   });
 }
+/* 하루 일정을 순서대로 쌓아 시각을 계산한다.
+   opt.start  하루 첫 도착 시각 'HH:MM'
+   opt.stay[] 각 정차지에 머무는 분
+   opt.ride[] i → i+1 이동시간(분). null 이면 0 으로 본다
+   opt.pin{}  {순번: 'HH:MM'} 사용자가 못 박은 시각. 거기서부터 다시 쌓는다 */
+function recalc(stops,opt){
+  const stay=opt.stay||[], ride=opt.ride||[], pin=opt.pin||{};
+  const arrive=[], depart=[];
+  let 시각=hm2min(opt.start);
+  if(시각===null) 시각=0;
+  for(let i=0;i<stops.length;i++){
+    if(i>0) 시각=depart[i-1]+(ride[i-1]||0);
+    const 못박음=hm2min(pin[i]);
+    if(못박음!==null) 시각=못박음;
+    arrive[i]=시각;
+    depart[i]=시각+(stay[i]||0);
+  }
+  return { arrive:arrive.map(min2hm), depart:depart.map(min2hm),
+           arriveMin:arrive, departMin:depart };
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
