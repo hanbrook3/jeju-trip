@@ -8,3 +8,8 @@ tools/mapdata/roads-clean.json
 tools/mapdata/beach.json
 tools/mapdata/mapdata.js
 tools/mapdata/preview.png
+
+# 공유 저장소가 돌면서 만드는 자료 — 서버가 들고 있는 것이지 소스가 아니다
+tools/jeju-api/places.json
+# 브라우저 도구가 남기는 기록
+.playwright-mcp/

@@ -31,7 +31,14 @@
    배율이 9 로 보인다. 아래처럼 1.4초 이상 기다려야 진짜 값이 나온다.
 
    주의: 대기시간 합이 26초쯤이라 javascript_tool 의 30초 제한에 걸린다.
-   섹션 단위로 서너 번에 나눠 붙이고, 앞 결과는 window.__rc 에 모아 두면 된다. */
+   섹션 단위로 서너 번에 나눠 붙이고, 앞 결과는 window.__rc 에 모아 두면 된다.
+
+   주의: 가족이 넣은 장소가 있으면 점갈래 숫자가 달라진다. 점검 전에
+   localStorage.removeItem('jeju.share') 후 인터넷을 끊고 새로고침할 것
+   (인터넷이 있으면 공유 서버에서 다시 받아 온다).
+
+   주의: 화면을 375x667 로 맞추고 돌릴 것. 전체보기·닫기·범례 높이가
+   화면 크기에 따라 달라진다. */
 (async () => {
   const w = ms => new Promise(r => setTimeout(r, ms));
   const err = []; window.addEventListener('error', e => err.push(String(e.message)));
