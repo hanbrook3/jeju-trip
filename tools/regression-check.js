@@ -15,6 +15,9 @@
      점클릭 {일치 true, 간격 8}   지도 점을 누르면 그 카드가 열리고 지도 바로 아래로 온다
      지도통합 {거친탭 "trip,spot,food", 한곳수정이_세탭에 true}
      핀참조 {일정 5, 여행지 0}     탭을 바꾸면 번호 핀 참조가 비워져야 한다
+     점갈래_일정   {여행지 48, 명소 35, 맛집 51, 범례 4항목}
+     점갈래_여행지 {여행지 48, 명소 35, 맛집 0,  범례 2항목}
+     점갈래_맛집   {여행지 0,  명소 0,  맛집 51, 범례 2항목}
      길찾기 0            카카오맵 길찾기 버튼은 없앴다 — 다시 생기면 0 이 아니다
      섬전체 {줌 9, 다보임 true}
      전체보기 667 / 닫기 213±1
@@ -115,6 +118,23 @@
   const pinTrip = pinRefs.length;
   document.querySelector('.mtab[data-m="spot"]').click(); await w(1800);
   o.핀참조 = { 일정: pinTrip, 여행지: pinRefs.length };
+
+  /* 3-5) 탭에 맞는 점만 그리는가. 일정은 전부, 여행지는 볼거리만, 맛집은 먹을거리만.
+         범례도 그린 점만 설명해야 한다. */
+  const 점세기 = () => { const c = { 여행지: 0, 명소: 0, 맛집: 0 };
+    poiLyr.eachLayer(m => { const el = m.getElement && m.getElement(); if (!el) return;
+      const k = el.className;
+      if (k.includes('food')) c.맛집++; else if (k.includes('spot')) c.여행지++; else c.명소++; });
+    return c; };
+  const 범례항목 = () => [...document.querySelectorAll('#legend > span')]
+    .filter(x => x.getClientRects().length && (x.querySelector('i')))
+    .map(x => x.innerText.replace(/\s+/g, ' ').trim());
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(1800);
+  o.점갈래_일정 = { ...점세기(), 범례: 범례항목() };
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1800);
+  o.점갈래_여행지 = { ...점세기(), 범례: 범례항목() };
+  document.querySelector('.mtab[data-m="food"]').click(); await w(1800);
+  o.점갈래_맛집 = { ...점세기(), 범례: 범례항목() };
 
   /* 4) 지도 조작 버튼 세 개 */
   document.querySelector('.mtab[data-m="trip"]').click(); await w(1200);
