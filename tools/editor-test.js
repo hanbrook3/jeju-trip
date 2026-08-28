@@ -18,7 +18,7 @@ try {
     ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;' +
     ' __out.recalc=recalc; __out.mealWarn=mealWarn;' +
     ' __out.openHours=openHours; __out.offDay=offDay; __out.spotWarn=spotWarn;' +
-    ' __out.fixWarn=fixWarn;')(API);
+    ' __out.fixWarn=fixWarn; __out.planFingerprint=planFingerprint;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -273,6 +273,16 @@ console.log('\n[경고 — 못 박은 시각]');
 확인('늦으면 경고', API.fixWarn('진도항 도착','11:05','11:20'),
   '진도항 도착이 오전 11시 20분으로 계산됩니다. 오전 11시 5분까지 도착해야 합니다.');
 확인('시각을 못 읽으면 경고 없음', API.fixWarn('진도항 도착','','11:20'), null);
+
+console.log('\n[저장 지문]');
+{
+  const A=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'}]}];
+  const B=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'}]}];
+  const C=[{stops:[{n:'가',t:'09:00'},{n:'다',t:'10:00'}]}];
+  확인('같은 일정은 같은 지문', API.planFingerprint(A), API.planFingerprint(B));
+  확인('이름이 바뀌면 다른 지문', API.planFingerprint(A)!==API.planFingerprint(C), true);
+  확인('지문은 문자열', typeof API.planFingerprint(A), 'string');
+}
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;

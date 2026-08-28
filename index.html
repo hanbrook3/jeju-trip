@@ -2100,6 +2100,22 @@ function paintRoute(co,color,dashed){
   L.polyline(co,{interactive:false,color:color,weight:4,opacity:.95,lineJoin:'round',lineCap:'round',
     dashArray:dashed?'9 6':null}).addTo(routeLyr);
 }
+/* 편집 내용은 바뀐 값만 저장한다. 정차지 전체를 저장하면
+   배포판 일정이 바뀌었을 때 옛 값이 통째로 되살아난다. */
+const EDIT_KEY='jeju-trip-edit';
+function editLoad(){
+  try{
+    const raw=localStorage.getItem(EDIT_KEY);
+    if(!raw) return null;
+    const o=JSON.parse(raw);
+    if(o.fp!==planFingerprint(D)){ localStorage.removeItem(EDIT_KEY); return null; }
+    return o.edit||null;
+  }catch(e){ return null; }
+}
+function editSave(edit){
+  try{ localStorage.setItem(EDIT_KEY,JSON.stringify({fp:planFingerprint(D),edit:edit})); }catch(e){}
+}
+function editClear(){ try{ localStorage.removeItem(EDIT_KEY); }catch(e){} }
 /* 두 곳 사이 이동시간(분). 경로 서버의 실제 도로 소요시간을 쓰고,
    막히면 추정으로 넘어간다 — 계산이 멈추면 편집기를 못 쓰게 되기 때문이다.
    좌표쌍마다 캐시해 같은 구간을 두 번 묻지 않는다. */
@@ -2836,6 +2852,15 @@ function fixWarn(이름,못박은,계산된){
   const 지금=hmKo(계산된);
   return 이름+조사(이름,'이','가')+' '+지금+조사(지금,'으로','로')+' 계산됩니다. '+
          hmKo(못박은)+'까지 도착해야 합니다.';
+}
+/* 배포판 일정의 지문. 저장해 둔 편집이 어느 일정에 붙은 것인지 가리는 데 쓴다.
+   배포판이 바뀌었는데 옛 편집이 남아 있으면 엉뚱한 곳에 붙는다. */
+function planFingerprint(D){
+  let s='';
+  D.forEach(function(d){ d.stops.forEach(function(x){ s+=x.n+'|'+x.t+';'; }); });
+  let hash=0;
+  for(let i=0;i<s.length;i++){ hash=(hash*31+s.charCodeAt(i))|0; }
+  return String(hash);
 }
 /* ══════ 일정 계산 끝 ══════ */
 
