@@ -838,8 +838,6 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .fmenu .fprice.tbd{color:var(--faint);font-weight:500}
 .fmeta{margin:10px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
 .fact{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
-.fact .navi{background:var(--sea);border-color:var(--sea);color:#fff}
-.fact .navi:hover{background:var(--sea2);border-color:var(--sea2)}
 .mapinfo .fact{margin-top:10px}
 .fact a,.fact button{
   appearance:none;cursor:pointer;font-family:inherit;text-decoration:none;
@@ -2175,6 +2173,37 @@ function scrollUnderMap(el){
   setTimeout(go,260);
 }
 
+/* 좌표로 지도 점을 찾아 크게 표시한다 — 카드를 열었을 때 쓴다 */
+function markSelAt(ll){
+  if(!poiLyr||!ll) return;
+  let hit=null;
+  poiLyr.eachLayer(function(m){
+    const p=m.getLatLng&&m.getLatLng();
+    if(p&&Math.abs(p.lat-ll[0])<1e-6&&Math.abs(p.lng-ll[1])<1e-6) hit=m;
+  });
+  markSel(hit);
+}
+/* 여행지·맛집 카드를 열었을 때 — 일정 탭의 focusStop 과 같은 방식으로 움직인다 */
+function focusPoi(ll){
+  try{
+    if(!map||!ll) return;
+    map.stop();
+    map.setView(ll,buildState==='vec'?11:FOCUS_ZOOM,{animate:false});
+    markSelAt(ll);
+  }catch(e){}
+}
+/* 지도 점을 눌렀을 때 지금 탭에 그 카드가 있으면 연다.
+   일정 탭에서 핀을 누르면 카드가 열리는 것과 같게 맞춘 것이다.
+   카드가 없으면(다른 탭이거나 걸러진 항목이면) false 를 돌려 패널로 넘긴다. */
+function openCard(mode,box,attr,i,ll){
+  if(curMode!==mode) return false;
+  const el=document.querySelector('#'+box+' details['+attr+'="'+i+'"]');
+  if(!el) return false;
+  if(el.open){ hideInfo(); focusPoi(ll); } else { el.open=true; }
+  scrollUnderMap(el);
+  return true;
+}
+
 /* 누른 점을 지도에서 크게 표시한다 */
 function markSel(marker){
   try{
@@ -2208,7 +2237,7 @@ function drawPoi(){
     L.marker(s.ll,{interactive:true,keyboard:false,zIndexOffset:-250,
       icon:L.divIcon({className:'poi spot'+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+s.n+'</span>'})})
-      .on('click',function(){ showInfo({kind:'spot',idx:i}); markSel(this); })
+      .on('click',function(){ if(openCard('spot','spotcards','data-si',i,s.ll)) return; showInfo({kind:'spot',idx:i}); markSel(this); })
       .addTo(poiLyr)._prio=4;
   });
   /* 그 밖의 명소 — 이름만 있는 옅은 점.
@@ -2230,7 +2259,7 @@ function drawPoi(){
     L.marker(f.ll,{interactive:true,keyboard:false,zIndexOffset:-200,
       icon:L.divIcon({className:'poi food'+(f.kind==='카페'?' cafe':'')+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+f.n+'</span>'})})
-      .on('click',function(){ showInfo({kind:'food',idx:fi}); markSel(this); })
+      .on('click',function(){ if(openCard('food','foodcards','data-fi',fi,f.ll)) return; showInfo({kind:'food',idx:fi}); markSel(this); })
       .addTo(poiLyr)._prio=f.pick?3:2;
   });
   /* 그린 직후 한 번 정리 — 마커 요소가 DOM 에 붙은 뒤여야 한다 */
@@ -2607,13 +2636,8 @@ const CAND=[
   menu:[],hours:'10:30–20:00 무휴',note:'목요일 대안',tel:'064-794-9557'}];
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
-/* 카카오맵 길찾기 — 휴대폰에서 누르면 지도앱으로 넘어간다 */
-const naviHref=(name,ll)=>'https://map.kakao.com/link/to/'+encodeURIComponent(name)+','+ll[0]+','+ll[1];
-function actRow(name,ll,tel){
-  const a=[];
-  if(ll) a.push('<a class="navi" href="'+naviHref(name,ll)+'" target="_blank" rel="noopener">길찾기</a>');
-  if(tel) a.push('<a href="'+telHref(tel)+'">전화 '+tel+'</a>');
-  return a.length?'<div class="fact">'+a.join('')+'</div>':'';
+function actRow(tel){
+  return tel?'<div class="fact"><a href="'+telHref(tel)+'">전화 '+tel+'</a></div>':'';
 }
 
 /* ══════ 여행지 ══════
@@ -3226,7 +3250,7 @@ function renderFoodCards(){
         ${f.hours?`<p class="fmeta">${apText(f.hours)}</p>`:''}
         ${f.note?`<p class="fnote">${apText(f.note)}</p>`:''}
         ${f.addr?`<p class="faddr">${f.addr}</p>`:''}
-        ${actRow(f.n,f.ll,f.tel)}
+        ${actRow(f.tel)}
       </div>
     </details>`;}).join('');
 }
@@ -3279,7 +3303,7 @@ function renderSpotCards(){
         <span class="fsub">${apText(s.open||'')}</span>
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </summary>
-      <div class="fbody2">${spotBody(s)}${actRow(s.n,s.ll)}</div>
+      <div class="fbody2">${spotBody(s)}</div>
     </details>`;}).join('');
 }
 function renderSpot(){ renderSpotAxis(); renderSpotFilter(); renderSpotCards(); }
@@ -3386,7 +3410,7 @@ function showInfo(t){
        <p>${[f.main,f.rate&&('평점 '+f.rate),f.hours&&apText(f.hours),f.addr].filter(Boolean).join(' — ')}</p>
        ${menu}
        ${f.note?`<p class="fnote" style="margin-top:8px">${apText(f.note)}</p>`:''}
-       ${actRow(f.n,f.ll,f.tel)}`;
+       ${actRow(f.tel)}`;
   }else{
     /* 지도 점은 이름으로, 여행지 카드는 번호로 들어온다 */
     const i=(typeof t.idx==='number')?t.idx:spotByName[t.name];
@@ -3395,7 +3419,7 @@ function showInfo(t){
       h=`<span class="mi-kind spot">여행지 · ${s.theme}</span>
          <h4>${s.n}</h4>
          <p>${[s.zone,apText(s.open||''),s.off&&('휴무 '+s.off)].filter(Boolean).join(' — ')}</p>
-         ${spotBody(s)}${actRow(s.n,s.ll)}`;
+         ${spotBody(s)}`;
     }else{
       h=`<span class="mi-kind spot">관광지</span>
          <h4>${t.name}</h4>
@@ -3551,10 +3575,8 @@ document.getElementById('spotcards').addEventListener('toggle',e=>{
   if(el.tagName!=='DETAILS'||!el.open) return;
   document.querySelectorAll('#spotcards details[open]').forEach(x=>{ if(x!==el) x.open=false; });
   const s=SPOT[+el.dataset.si]; if(!s) return;
-  showInfo({kind:'spot',idx:+el.dataset.si});
-  try{ if(map){ map.stop(); map.setView(s.ll,FOCUS_ZOOM,{animate:false}); } }catch(e){}
-  const mz=document.getElementById('mapzone');
-  if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
+  hideInfo();
+  focusPoi(s.ll);
 },true);
 
 /* 식당 · 카페 구분 */
@@ -3583,11 +3605,8 @@ document.getElementById('foodcards').addEventListener('toggle',e=>{
   document.querySelectorAll('#foodcards details[open]').forEach(x=>{ if(x!==el) x.open=false; });
   const f=FOOD[+el.dataset.fi];
   if(!f||!f.ll) return;
-  showInfo({kind:'food',idx:+el.dataset.fi});
-  /* setView(animate:false) — flyTo 는 앞선 애니메이션에 눌려 무시되는 일이 잦다 */
-  try{ if(map){ map.stop(); map.setView(f.ll,FOCUS_ZOOM,{animate:false}); } }catch(e){}
-  const mz=document.getElementById('mapzone');
-  if(mz&&mz.scrollIntoView) mz.scrollIntoView({behavior:'smooth',block:'start'});
+  hideInfo();
+  focusPoi(f.ll);
 },true);
 
 initMap();

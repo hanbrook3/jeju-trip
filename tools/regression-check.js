@@ -8,17 +8,23 @@
    기대값 (2026-08-28 기준)
      배지불일치 0        지도 핀 번호와 일정 카드 번호가 어긋나면 0 이 아니다
      핀합계 30           5일치 정차지 합계
-     지적경계 11 / 경로 5 / 길찾기 51
+     지적경계 11 / 경로 5
      핀클릭.간격 8       핀을 누르면 카드 상단이 지도 바로 아래 8px 에 온다
      일정줌·여행지줌·맛집줌 15     카드를 열면 세 탭 모두 같은 배율
+     탭통일 {패널 true, 안움직임 true, 선택표시 1}  여행지·맛집 카드도 일정 탭처럼 반응하는가
+     점클릭 {일치 true, 간격 8}   지도 점을 누르면 그 카드가 열리고 지도 바로 아래로 온다
+     길찾기 0            카카오맵 길찾기 버튼은 없앴다 — 다시 생기면 0 이 아니다
      섬전체 {줌 9, 다보임 true}
-     전체보기 667 / 닫기 213
-     범례 {높이 29, 한줄 true}     버튼이 아래로 밀리면 높이가 50 근처가 된다
+     전체보기 667 / 닫기 213±1
+     범례 {높이 29±1, 한줄 true}   버튼이 아래로 밀리면 높이가 50 근처가 된다
      개략도 {path 58(z9) / 77(z12), 오류 0}
      오류 []
 
    주의: 탭을 바꾼 직후 곧바로 카드를 누르면 탭 전환의 fitMap 이 나중에 실행돼
-   배율이 9 로 보인다. 아래처럼 1.4초 이상 기다려야 진짜 값이 나온다. */
+   배율이 9 로 보인다. 아래처럼 1.4초 이상 기다려야 진짜 값이 나온다.
+
+   주의: 대기시간 합이 26초쯤이라 javascript_tool 의 30초 제한에 걸린다.
+   섹션 단위로 서너 번에 나눠 붙이고, 앞 결과는 window.__rc 에 모아 두면 된다. */
 (async () => {
   const w = ms => new Promise(r => setTimeout(r, ms));
   const err = []; window.addEventListener('error', e => err.push(String(e.message)));
@@ -37,6 +43,7 @@
   o.배지불일치 = bad; o.핀합계 = pins;
   o.지적경계 = AREAS.length; o.경로 = Object.keys(PATHS).length;
   o.길찾기 = document.querySelectorAll('a[href*="map.kakao.com/link/to"]').length;
+
 
   /* 2) 핀을 누르면 그 일정 카드 "상단" 이 지도 바로 아래로 와야 한다 */
   document.querySelectorAll('#daytabs .dtab')[0].click(); await w(700);
@@ -57,6 +64,35 @@
   document.querySelector('.mtab[data-m="food"]').click(); await w(1500);
   document.querySelector('#foodcards details summary').click(); await w(1200);
   o.맛집줌 = map.getZoom();
+
+  /* 3-1) 여행지·맛집 카드도 일정 탭처럼 반응하는가.
+         카드를 열면 지도 아래 패널이 뜨지 않고, 화면이 움직이지 않고, 그 점이 선택 표시된다.
+         예전에는 카드와 똑같은 내용이 패널에 또 그려져 한 화면에 두 번 나왔다. */
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1600);
+  document.querySelectorAll('#spotcards details[open]').forEach(x => x.open = false);
+  hideInfo(); await w(400);
+  const sc = [...document.querySelectorAll('#spotcards details')][6];
+  sc.scrollIntoView({ block: 'center' }); await w(500);
+  const y0 = Math.round(scrollY), t0 = Math.round(sc.getBoundingClientRect().top);
+  sc.querySelector('summary').click(); await w(1400);
+  o.탭통일 = { 패널: document.getElementById('mapinfo').hidden,
+    안움직임: Math.round(scrollY) === y0 && Math.round(sc.getBoundingClientRect().top) === t0,
+    선택표시: document.querySelectorAll('#map .poi.sel').length };
+
+  /* 3-2) 지도 점을 누르면 그 카드가 열리고 카드 상단이 지도 바로 아래로 온다.
+         일정 탭에서 핀을 누를 때와 같은 값(8px)이어야 한다. */
+  document.querySelectorAll('#spotcards details[open]').forEach(x => x.open = false);
+  hideInfo(); window.scrollTo(0, 900); await w(600);
+  const sp = SPOT[20];
+  let mk = null;
+  poiLyr.eachLayer(m => { const p = m.getLatLng && m.getLatLng();
+    if (p && Math.abs(p.lat - sp.ll[0]) < 1e-6 && Math.abs(p.lng - sp.ll[1]) < 1e-6) mk = m; });
+  if (mk) mk.fire('click');
+  await w(1300);
+  const op = document.querySelector('#spotcards details[open]');
+  o.점클릭 = { 일치: op?.querySelector('.ftit b')?.textContent === sp.n,
+    간격: op ? Math.round(op.getBoundingClientRect().top
+      - document.querySelector('.stickytop').getBoundingClientRect().bottom) : null };
 
   /* 4) 지도 조작 버튼 세 개 */
   document.querySelector('.mtab[data-m="trip"]').click(); await w(1200);
