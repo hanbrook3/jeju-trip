@@ -3631,7 +3631,13 @@ function editRow(day,si,s){
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
     +'<label class="ef"><input type="checkbox" class="ex"'+((e.fix||s.ty==='ship')?' checked':'')+'> 시각 고정</label>'
     +(경고.length?'<div class="ewarn">'+경고.map(function(w){return '※ '+w;}).join('<br>')+'</div>':'')
-    +'</div>';
+    +'</div>'
+    +(function(){
+       const r=(p.rides&&p.rides[si]);
+       if(r===null||r===undefined) return '';
+       const 거리=km(s.ll,(D[day].stops[si+1]||{}).ll);
+       return '<div class="eride">↓ 이동 '+r+'분'+(거리?' · '+거리.toFixed(1)+'km':'')+'</div>';
+     })();
 }
 function render(i){
   const d=D[i];
@@ -3691,6 +3697,7 @@ tabs.addEventListener('click',e=>{
   const b=e.target.closest('.dtab'); if(!b)return;
   [...tabs.children].forEach(x=>x.setAttribute('aria-selected',x===b));
   render(+b.dataset.i);
+  if(editOn) warmRides(+b.dataset.i);
   /* 날짜를 바꾸면 맨 위부터 다시 본다 */
   window.scrollTo({top:0,behavior:'smooth'});
 });
@@ -3938,11 +3945,25 @@ function dayWarns(day){
   });
 }
 let editOn=false;
+/* 그날 구간들의 실제 도로 소요시간을 받아 캐시를 채운다.
+   받아오는 동안에는 추정값으로 계산되고, 다 받으면 한 번 다시 그린다. */
+async function warmRides(day){
+  const stops=D[day].stops;
+  let 바뀜=false;
+  for(let i=0;i<stops.length-1;i++){
+    if(!stops[i].ll||!stops[i+1].ll) continue;
+    const 전=rideNow(stops[i].ll,stops[i+1].ll);
+    const 후=await rideFetch(stops[i].ll,stops[i+1].ll);
+    if(전!==후) 바뀜=true;
+  }
+  if(바뀜&&editOn&&curDay===day) render(day);
+}
 function setEdit(on){
   editOn=!!on;
   const bar=document.getElementById('editbar');
   if(bar) bar.hidden=!editOn;
   document.body.classList.toggle('editing',editOn);
+  if(editOn) warmRides(curDay);
   render(curDay);
 }
 document.getElementById('editkey').addEventListener('click',function(){ setEdit(!editOn); });
