@@ -777,6 +777,21 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .legend .lg-food{background:var(--amber);border:1.8px solid #fff}
 .legend .lg-cafe{background:var(--rose);border:1.8px solid #fff}
 .legend .lgtip{color:var(--faint);font-size:10.5px}
+.legend .lghash{color:var(--faint);cursor:pointer;padding:0 4px;user-select:none}
+.legend .lghash:hover{color:var(--ink2)}
+.editbar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:7px 12px;background:var(--seasoft);border-bottom:1px solid var(--line);
+  font-size:12px;color:var(--sea)
+}
+.editbar[hidden]{display:none}
+.editbar b{font-weight:600}
+.editbar .sp{margin-left:auto;display:flex;gap:6px}
+.editbar button{
+  appearance:none;cursor:pointer;font-family:inherit;font-size:11.5px;
+  padding:4px 9px;border-radius:6px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2)
+}
 .legend .lgmore{font-style:normal}
 /* ═══ 지도 아래 정보 패널 ═══ */
 .infozone{max-width:520px;margin:0 auto;padding:0 14px}
@@ -907,7 +922,9 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .mtab{padding:9px 2px 10px;font-size:13px}
 @media (max-width:360px){ .mtab{font-size:12px;letter-spacing:-.03em} }
 /* 아주 좁은 화면(구형 SE 등)에서는 범례 문구를 줄여 버튼이 아래로 밀리지 않게 한다 */
-@media (max-width:344px){ .lgmore{display:none} }
+@media (max-width:344px){ .lgmore{display:none}
+  .legend .lghash{margin:0 -4px}
+}
 #map{height:42vh;min-height:240px;max-height:360px;background:#CFE2EA;
   border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
 /* 좁은 화면에서는 지도를 조금 낮춰 아래 목록이 더 보이게 한다 */
@@ -1313,6 +1330,7 @@ summary.fhead .chev{flex:0 0 18px}
       <span class="lgeat"><i class="lg-food"></i>식당</span>
       <span class="lgeat"><i class="lg-cafe"></i>카페</span>
       <span class="lgtip">점을 누르면 아래에 정보가 나옵니다</span>
+      <span class="lghash" id="editkey" title="일정 편집">#</span>
       <span class="legbtns">
         <button class="mapfit" id="mapfit" type="button">섬 전체</button>
         <button class="mapall" id="mapall" type="button" aria-pressed="false">전체보기</button>
@@ -1323,6 +1341,14 @@ summary.fhead .chev{flex:0 0 18px}
 </div>
 <!-- 정보 패널은 sticky 밖에 둔다. 안에 있으면 내용이 길 때 sticky 영역이
      화면 높이를 넘겨 스크롤이 멈춘다. -->
+<div class="editbar" id="editbar" hidden>
+  <b>편집 중</b><span id="editday"></span>
+  <span class="sp">
+    <button type="button" id="editreset">원래대로</button>
+    <button type="button" id="editcopy">코드 복사</button>
+    <button type="button" id="editclose">닫기</button>
+  </span>
+</div>
 <div class="infozone"><div class="mapinfo" id="mapinfo" hidden></div></div>
 
 <main class="wrap">
@@ -3805,6 +3831,22 @@ document.getElementById('foodcards').addEventListener('toggle',e=>{
   focusPoi(f.ll,ZOOM_FOOD);
 },true);
 
+/* ══════ 일정 편집 ══════
+   범례 줄의 # 로 들어간다. 가족이 받은 링크에는 편집할 이유가 없으므로
+   화면에 크게 두지 않는다. 실수로 눌러도 '원래대로' 로 완전히 되돌아간다. */
+let editOn=false;
+function setEdit(on){
+  editOn=!!on;
+  const bar=document.getElementById('editbar');
+  if(bar) bar.hidden=!editOn;
+  document.body.classList.toggle('editing',editOn);
+  render(curDay);
+}
+document.getElementById('editkey').addEventListener('click',function(){ setEdit(!editOn); });
+document.getElementById('editclose').addEventListener('click',function(){ setEdit(false); });
+document.getElementById('editreset').addEventListener('click',function(){
+  editClear(); setEdit(false);
+});
 initMap();
 render(0);
 renderFood();
