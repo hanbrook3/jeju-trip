@@ -1,0 +1,10 @@
+# 지도 파이프라인의 원자료 — 크고 질의문으로 다시 받을 수 있다
+tools/mapdata/sk-prov.json
+tools/mapdata/jeju-raw.json
+tools/mapdata/isles.json
+tools/mapdata/udo.json
+tools/mapdata/roads.json
+tools/mapdata/roads-clean.json
+tools/mapdata/beach.json
+tools/mapdata/mapdata.js
+tools/mapdata/preview.png

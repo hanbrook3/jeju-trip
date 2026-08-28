@@ -1,0 +1,6 @@
+[out:json][timeout:180];
+(
+  way["highway"~"^(motorway|trunk|primary)$"](33.05,126.05,33.62,127.05);
+  way["highway"="secondary"]["ref"](33.05,126.05,33.62,127.05);
+);
+out geom;

@@ -1,0 +1,6 @@
+[out:json][timeout:90];
+(
+  way["place"="island"](33.05,126.05,33.62,127.05);
+  way["place"="islet"](33.05,126.05,33.62,127.05);
+);
+out geom;

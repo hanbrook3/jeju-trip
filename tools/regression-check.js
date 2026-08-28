@@ -1,0 +1,87 @@
+/* 회귀 점검 — 손댈 때마다 이걸 돌린다.
+   브라우저 콘솔(또는 Claude 의 javascript_tool)에 통째로 붙여 넣으면
+   한 덩어리 JSON 이 나온다. 아래 "기대값" 과 다르면 뭔가 깨진 것이다.
+
+   먼저 로컬 서버를 띄우고 375x667 로 맞춰 둘 것:
+     node tools/serve.js          →  http://127.0.0.1:8765
+
+   기대값 (2026-08-28 기준)
+     배지불일치 0        지도 핀 번호와 일정 카드 번호가 어긋나면 0 이 아니다
+     핀합계 30           5일치 정차지 합계
+     지적경계 11 / 경로 5 / 길찾기 51
+     핀클릭.간격 8       핀을 누르면 카드 상단이 지도 바로 아래 8px 에 온다
+     일정줌·여행지줌·맛집줌 15     카드를 열면 세 탭 모두 같은 배율
+     섬전체 {줌 9, 다보임 true}
+     전체보기 667 / 닫기 213
+     범례 {높이 29, 한줄 true}     버튼이 아래로 밀리면 높이가 50 근처가 된다
+     개략도 {path 58(z9) / 77(z12), 오류 0}
+     오류 []
+
+   주의: 탭을 바꾼 직후 곧바로 카드를 누르면 탭 전환의 fitMap 이 나중에 실행돼
+   배율이 9 로 보인다. 아래처럼 1.4초 이상 기다려야 진짜 값이 나온다. */
+(async () => {
+  const w = ms => new Promise(r => setTimeout(r, ms));
+  const err = []; window.addEventListener('error', e => err.push(String(e.message)));
+  const o = {};
+  await w(1800);
+
+  /* 1) 지도 핀 번호 ↔ 일정 카드 번호 */
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(900);
+  let bad = 0, pins = 0;
+  for (let i = 0; i < 5; i++) {
+    document.querySelectorAll('#daytabs .dtab')[i].click(); await w(650);
+    const P = [...document.querySelectorAll('.leaflet-marker-icon.pin b')].map(b => b.textContent.trim());
+    const C = [...document.querySelectorAll('#tl details.stop[data-lat]')].map(d => d.querySelector('.sn')?.textContent.trim());
+    pins += P.length; P.forEach((p, n) => { if (C[n] && C[n] !== p) bad++; });
+  }
+  o.배지불일치 = bad; o.핀합계 = pins;
+  o.지적경계 = AREAS.length; o.경로 = Object.keys(PATHS).length;
+  o.길찾기 = document.querySelectorAll('a[href*="map.kakao.com/link/to"]').length;
+
+  /* 2) 핀을 누르면 그 일정 카드 "상단" 이 지도 바로 아래로 와야 한다 */
+  document.querySelectorAll('#daytabs .dtab')[0].click(); await w(700);
+  window.scrollTo(0, 0); await w(300);
+  [...document.querySelectorAll('.leaflet-marker-icon.pin')]
+    .find(m => m.querySelector('b')?.textContent.trim() === '3').click();
+  await w(800);
+  let d = document.querySelector('#tl details.stop[open]');
+  o.핀클릭 = { k: d?.dataset.k,
+    간격: Math.round(d.getBoundingClientRect().top - document.querySelector('.stickytop').getBoundingClientRect().bottom) };
+
+  /* 3) 카드를 열면 세 탭 모두 같은 배율(FOCUS_ZOOM=15) */
+  document.querySelector('#tl details.stop[data-lat] summary').click(); await w(900);
+  o.일정줌 = map.getZoom();
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1500);
+  document.querySelector('#spotcards details summary').click(); await w(1200);
+  o.여행지줌 = map.getZoom();
+  document.querySelector('.mtab[data-m="food"]').click(); await w(1500);
+  document.querySelector('#foodcards details summary').click(); await w(1200);
+  o.맛집줌 = map.getZoom();
+
+  /* 4) 지도 조작 버튼 세 개 */
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(1200);
+  document.getElementById('mapfit').click(); await w(800);
+  o.섬전체 = { 줌: map.getZoom(), 다보임: (() => { const b = map.getBounds();
+    return b.contains([33.1941, 126.1609]) && b.contains([33.5661, 126.9462]); })() };
+  document.getElementById('mapall').click(); await w(900);
+  o.전체보기 = Math.round(document.getElementById('map').getBoundingClientRect().height);
+  document.getElementById('mapall').click(); await w(900);
+  o.닫기 = Math.round(document.getElementById('map').getBoundingClientRect().height);
+
+  /* 5) 범례 + 버튼이 한 줄에 들어가는가 */
+  const lg = document.getElementById('legend');
+  const it = [...lg.querySelectorAll(':scope>span')].filter(x => x.getClientRects().length);
+  const rows = [...new Set(it.map(x => Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2)))];
+  o.범례 = { 높이: Math.round(lg.getBoundingClientRect().height), 한줄: Math.max(...rows) - Math.min(...rows) < 6 };
+
+  /* 6) 개략도 — 카카오톡에서 타일이 막힌 상황 */
+  map.removeLayer(tileLyr); buildState = ''; setBuild('vec'); fitCurrent(); await w(900);
+  o.개략도z9 = { path: map.getPane('vecpane').querySelectorAll('path').length, 줌: map.getZoom(), 최대줌: map.getMaxZoom() };
+  map.setView([33.45, 126.92], 12, { animate: false }); await w(700);
+  o.개략도z12 = { path: map.getPane('vecpane').querySelectorAll('path').length,
+    순환: vecLine.ring[0].options.weight, 해안: vecCoast.options.weight };
+
+  o.타일서버 = TILE_SRC.map(t => t.u.split('/')[2]);
+  o.오류 = err;
+  return JSON.stringify(o, null, 1);
+})()
