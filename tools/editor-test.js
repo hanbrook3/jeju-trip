@@ -15,7 +15,7 @@ const code = h.slice(a, b + E.length);
 const API = {};
 try {
   new Function('__out', code + '\n__out.hm2min=hm2min; __out.min2hm=min2hm;' +
-    ' __out.km=km; __out.guessMin=guessMin;')(API);
+    ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -56,6 +56,70 @@ for (const [이름, a, b, 실제] of 실측) {
 }
 확인('같은 자리는 0분', API.guessMin([33.5,126.5],[33.5,126.5]), 0);
 확인('좌표가 없으면 null', API.guessMin(null,[33.5,126.5]), null);
+
+console.log('\n[머무는 시간 자동 채우기]');
+/* 좌표가 있는 두 곳: 시각 차이에서 이동시간을 뺀 것이 stay */
+{
+  const stops=[
+    {t:'10:00',n:'가',ll:[33.4581,126.9425]},
+    {t:'11:30',n:'나',ll:[33.4242,126.9311]},
+    {t:'13:00',n:'다',ll:[33.4242,126.9311]},
+  ];
+  /* 가→나 11분, 나→다 0분 (나와 다는 같은 좌표라 이동이 없다).
+     구간마다 값이 달라야 fillStay 가 ride 에 올바른 번호를 넘기는지 확인된다. */
+  const 이동=i=>i===0?11:0;
+  const r=API.fillStay(stops,이동);
+  확인('첫 곳 stay = 90분 - 11분 = 79', r[0], 79);
+  확인('둘째 곳 stay = 90분 - 0분 = 90', r[1], 90);
+  확인('마지막 곳은 기본값 60', r[2], 60);
+}
+/* 좌표가 없으면 이동시간 0 — 시각 차이가 그대로 stay */
+{
+  const stops=[{t:'07:10',n:'휴게소'},{t:'09:40',n:'휴게소2'}];
+  const r=API.fillStay(stops,()=>null);
+  확인('좌표 없으면 시각 차이 전부가 stay', r[0], 150);
+}
+/* 시각을 읽을 수 없으면 기본값 */
+{
+  const stops=[{t:'',n:'가'},{t:'10:00',n:'나'}];
+  const r=API.fillStay(stops,()=>null);
+  확인('시각을 못 읽으면 60', r[0], 60);
+}
+
+console.log('\n[진짜 일정으로 확인]');
+{
+  /* index.html 의 D 를 꺼낸다 */
+  function grab(name){
+    const key='const '+name+'=', i=h.indexOf(key);
+    let j=i+key.length, depth=0, inStr=null, esc=false;
+    const open=h[j], close=open==='['?']':'}';
+    for(;j<h.length;j++){ const c=h[j];
+      if(esc){esc=false;continue;}
+      if(inStr){ if(c==='\\')esc=true; else if(c===inStr)inStr=null; continue; }
+      if(c==='"'||c==="'"||c==='`'){inStr=c;continue;}
+      if(c===open)depth++; else if(c===close){depth--; if(depth===0){j++;break;}} }
+    return eval('('+h.slice(i+key.length,j)+')');
+  }
+  const D=grab('D');
+  /* 이동시간을 추정으로 넣고 stay 를 역산한 뒤, 그 값으로 시각을 다시 쌓으면
+     원래 시각이 그대로 나와야 한다 */
+  let 어긋남=0;
+  D.forEach(function(d,di){
+    const stops=d.stops;
+    const rides=[];
+    for(let i=0;i<stops.length-1;i++) rides.push(API.guessMin(stops[i].ll,stops[i+1].ll));
+    const stay=API.fillStay(stops,function(i){ return rides[i]; });
+    /* 되돌려 쌓기 */
+    let t=API.hm2min(stops[0].t);
+    for(let i=0;i<stops.length;i++){
+      if(i>0) t=t+stay[i-1]+(rides[i-1]||0);
+      const 원래=API.hm2min(stops[i].t);
+      if(원래!==null&&원래!==t){ 어긋남++;
+        console.log('  ✗ '+(di+1)+'일차 '+stops[i].n+' 원래 '+stops[i].t+' 계산 '+API.min2hm(t)); }
+    }
+  });
+  확인('배포판 시각을 역산했다가 다시 쌓으면 원래대로 돌아온다', 어긋남, 0);
+}
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;

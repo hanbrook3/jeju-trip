@@ -2711,6 +2711,19 @@ function guessMin(a,b){
   const 속도=Math.min(52, 16+도로*3);
   return Math.round(도로/속도*60);
 }
+/* 배포판 시각에서 머무는 시간을 역산한다.
+   지금 자료에는 시각만 있어서, 편집기를 처음 열었을 때 계산 결과가
+   지금 일정과 똑같이 나오게 하려면 이 값이 필요하다.
+   ride(i) 는 i 번째에서 i+1 번째로 가는 이동시간(분) 또는 null. */
+function fillStay(stops,ride){
+  const STAY_기본=60;
+  return stops.map(function(s,i){
+    const 이곳=hm2min(s.t), 다음=i+1<stops.length ? hm2min(stops[i+1].t) : null;
+    if(이곳===null||다음===null) return STAY_기본;
+    const 이동=ride(i)||0;
+    return Math.max(0, 다음-이곳-이동);
+  });
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
