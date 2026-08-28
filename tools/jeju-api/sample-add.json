@@ -1,0 +1,4 @@
+{ "who":"시험", "act":"add", "kind":"food",
+  "rec":{ "n":"시험식당", "zone":"제주시내", "theme":"직접 추가", "kind":"식당",
+          "ll":[33.5,126.5], "addr":"제주시 어딘가", "tel":"", "menu":[], "note":"시험용",
+          "main":"", "pick":false, "rate":"" } }
