@@ -820,6 +820,36 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .eride{
   padding:3px 14px;font-size:11px;color:var(--faint)
 }
+/* 장소 바꾸기 — 편집 중에만 나온다 */
+.erow .epb{
+  appearance:none;cursor:pointer;font-family:inherit;font-size:11.5px;
+  padding:3px 8px;border-radius:5px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2)
+}
+.erow .epb[aria-expanded=true]{background:var(--sea);border-color:var(--sea);color:#fff}
+.epick{
+  flex:1 0 100%;margin-top:2px;padding:7px 8px;border-radius:6px;
+  background:var(--seasoft);border:1px solid var(--line)
+}
+.epick .eq{display:flex;gap:5px;align-items:center}
+.epick .eqi{
+  flex:1;min-width:0;font-family:inherit;font-size:12px;padding:4px 7px;
+  border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink2)
+}
+.epick .epown{
+  appearance:none;cursor:pointer;font-family:inherit;font-size:11.5px;flex:0 0 auto;
+  padding:4px 8px;border-radius:5px;border:1px solid var(--line);
+  background:#fff;color:var(--ink2)
+}
+.epick ul{list-style:none;margin:6px 0 0;padding:0;max-height:166px;overflow-y:auto}
+.epick li{
+  display:flex;gap:8px;align-items:baseline;padding:4px 6px;border-radius:5px;
+  font-size:12px;color:var(--ink2);cursor:pointer
+}
+.epick li:hover{background:#fff}
+.epick li .ek{margin-left:auto;text-align:right;font-size:11px;color:var(--faint)}
+.epick li.off,.epick li.enone{color:var(--faint);cursor:default}
+.epick li.off:hover,.epick li.enone:hover{background:none}
 /* 편집 중 카드는 늘 열려 있다 — 열고 닫는 표시는 지운다 */
 body.editing #tl details.stop[open]{border-color:var(--line);box-shadow:none}
 body.editing #tl summary.head{cursor:default}
@@ -3732,7 +3762,9 @@ function editRow(day,si,s){
     +'<label>도착 <input type="time" class="et" value="'+도착+'"></label>'
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
     +'<label class="ef"><input type="checkbox" class="ex"'+((e.fix||s.ty==='ship')?' checked':'')+'> 시각 고정</label>'
+    +'<button type="button" class="epb" aria-expanded="'+(pickSi===si)+'">장소 바꾸기</button>'
     +(경고.length?'<div class="ewarn">'+경고.map(function(w){return '※ '+w;}).join('<br>')+'</div>':'')
+    +(pickSi===si?pickBox(day,si):'')
     +'</div>'
     +(function(){
        const r=(p.rides&&p.rides[si]);
@@ -3745,6 +3777,7 @@ function render(i){
   const d=D[i];
   document.getElementById('dTitle').textContent=d.t;
   document.getElementById('dSub').textContent=d.s;
+  if(i!==curDay) pickSi=-1;
   if(editOn){ window.__plan=dayPlan(i); window.__warn=dayWarns(i); }
   /* 편집 중에는 배너 시각도 계산 결과를 따라야 한다 — 배너와 목록이 다른 시간을 말하면 안 된다.
      가운데 항목이 1~4일차는 거리이고 5일차는 시각이므로 첫 값이 HH:MM 인 것만 손댄다.
@@ -4320,12 +4353,67 @@ function stopsOf(day){
     return Object.assign({}, s, { n:e.place.n, ll:e.place.ll });
   });
 }
+/* 장소 바꾸기 — 어느 줄이 열려 있고 무엇을 찾는 중인가. 편집 중에만 쓴다. */
+let pickSi=-1, pickQ='';
+function pickEsc(t){
+  return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+/* 고를 수 있는 곳 — 여행지 48곳과 맛집 51곳. 가족이 넣은 장소도 배열에 이미 들어 있다.
+   그날 정기 휴무인 곳은 감추지 않고 못 고르게만 한다 —
+   없는 것과 그날만 못 가는 것은 다르기 때문이다.
+   맛집에는 off 가 없어 이 검사를 건너뛴다. */
+function pickList(day,si,q){
+  const 요일=D[day].dw.split(' ')[0];
+  const 기준=(stopsOf(day)[si]||{}).ll;
+  const 말=String(q||'').trim().toLowerCase();
+  const 것들=[];
+  SPOT.forEach(function(x){
+    if(!x.ll) return;
+    const 쉬는날=offDay(x.off);
+    것들.push({n:x.n,ll:x.ll,갈래:'여행지',곁:x.theme||'',
+      막힘:(쉬는날&&쉬는날===요일)?('그날('+요일+'요일) 휴무'):''});
+  });
+  FOOD.forEach(function(x){
+    if(!x.ll) return;
+    것들.push({n:x.n,ll:x.ll,갈래:'맛집',곁:x.main||'',막힘:''});
+  });
+  if(말) return 것들.filter(function(x){ return x.n.toLowerCase().indexOf(말)>=0; });
+  /* 안 쳤으면 지금 정차지에서 가까운 순으로 — 근처에서 대안을 찾는 일이 대부분이다 */
+  return 것들.sort(function(a,b){
+    const da=km(기준,a.ll), db=km(기준,b.ll);
+    return (da===null?9e9:da)-(db===null?9e9:db);
+  }).slice(0,20);
+}
+/* 후보 줄들. 검색어를 고칠 때는 이것만 갈아 끼운다 — 전체를 다시 그리면 글자를 못 친다. */
+function pickItems(day,si,q){
+  const 것들=pickList(day,si,q);
+  if(!것들.length) return '<li class="enone">찾는 이름이 없습니다</li>';
+  return 것들.map(function(x,n){
+    const 곁=[x.갈래,x.곁,x.막힘].filter(Boolean).join(' · ');
+    return '<li'+(x.막힘?' class="off"':' data-p="'+n+'"')+'>'
+      +'<span>'+pickEsc(x.n)+'</span><span class="ek">'+pickEsc(곁)+'</span></li>';
+  }).join('');
+}
+function pickBox(day,si){
+  return '<div class="epick" data-si="'+si+'">'
+    +'<div class="eq">'
+    +'<input type="text" class="eqi" placeholder="찾을 이름" autocomplete="off" spellcheck="false" value="'+pickEsc(pickQ)+'">'
+    +'<button type="button" class="epown">직접 입력</button></div>'
+    +'<ul>'+pickItems(day,si,pickQ)+'</ul></div>';
+}
 /* 하루치 계산 결과를 낸다. 이동시간은 캐시에 있으면 실제값, 없으면 추정값을 쓴다 */
 function dayPlan(day){
-  const stops=stopsOf(day);
-  const rides=[];
-  for(let i=0;i<stops.length-1;i++) rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
-  const stay=fillStay(stops,function(i){ return rides[i]; }).map(function(v,i){
+  const stops=stopsOf(day), 배포=D[day].stops;
+  const rides=[], 배포이동=[];
+  for(let i=0;i<stops.length-1;i++){
+    rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
+    배포이동.push(rideNow(rideLL(배포[i],SPOT),rideLL(배포[i+1],SPOT)));
+  }
+  /* 머무는 시간은 배포판 일정에서 역산한다 — 지금 이동시간으로 역산하면
+     장소를 바꿔 길이 멀어진 만큼 머무는 시간이 줄어들어 뒤 일정이 밀리지 않는다.
+     멀어진 것은 길이지 머무는 시간이 아니다. */
+  const stay=fillStay(배포,function(i){ return 배포이동[i]; }).map(function(v,i){
     const e=editOf(day,i); return e.stay!==undefined ? e.stay : v;
   });
   const pin={};
@@ -4355,14 +4443,18 @@ let editOn=false;
 /* 그날 구간들의 실제 도로 소요시간을 받아 캐시를 채운다.
    받아오는 동안에는 추정값으로 계산되고, 다 받으면 한 번 다시 그린다. */
 async function warmRides(day){
-  const stops=stopsOf(day);
+  /* 지금 구간과 배포판 구간을 함께 받는다 — 머무는 시간을 배포판에서 역산하므로
+     그쪽이 추정값으로 남으면 장소를 바꾼 순간 머무는 시간이 튄다.
+     고친 것이 없으면 두 목록이 같아 캐시에 걸리고 더 묻지 않는다. */
   let 바뀜=false;
-  for(let i=0;i<stops.length-1;i++){
-    const A=rideLL(stops[i],SPOT), B=rideLL(stops[i+1],SPOT);
-    if(!A||!B) continue;
-    const 전=rideNow(A,B);
-    const 후=await rideFetch(A,B);
-    if(전!==후) 바뀜=true;
+  for(const stops of [stopsOf(day),D[day].stops]){
+    for(let i=0;i<stops.length-1;i++){
+      const A=rideLL(stops[i],SPOT), B=rideLL(stops[i+1],SPOT);
+      if(!A||!B) continue;
+      const 전=rideNow(A,B);
+      const 후=await rideFetch(A,B);
+      if(전!==후) 바뀜=true;
+    }
   }
   if(바뀜&&editOn&&curDay===day) render(day);
 }
@@ -4382,6 +4474,7 @@ document.getElementById('ekeysave').addEventListener('click',function(){
 });
 function setEdit(on){
   editOn=!!on;
+  pickSi=-1;
   const bar=document.getElementById('editbar');
   if(bar) bar.hidden=!editOn;
   ekeySync();
@@ -4404,11 +4497,17 @@ function editCode(){
     const p=dayPlan(+day);
     stopsOf(+day).forEach(function(s,i){
       const c=(e[day]&&e[day][i])||{};
-      if(p.arrive[i]===s.t&&c.stay===undefined&&!c.fix) return;
+      if(p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place) return;
       const 조각=["t:'"+p.arrive[i]+"'"];
+      if(c.place){
+        /* 직접 입력한 이름에 따옴표가 섞이면 붙여 넣을 코드가 깨진다 */
+        조각.push("n:'"+String(c.place.n).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'");
+        if(c.place.ll) 조각.push('ll:['+c.place.ll[0]+','+c.place.ll[1]+']');
+      }
       if(c.stay!==undefined) 조각.push('stay:'+c.stay);
       if(c.fix) 조각.push('fix:true');
-      줄.push('  /* '+(+day+1)+'일차 '+s.n+' */ '+조각.join(', '));
+      /* 붙일 자리를 찾아야 하므로 주석에는 배포판 이름을 쓴다 */
+      줄.push('  /* '+(+day+1)+'일차 '+D[+day].stops[i].n+' */ '+조각.join(', '));
     });
   });
   return 줄.length ? 줄.join('\n') : '(고친 것이 없습니다)';
@@ -4429,7 +4528,44 @@ document.getElementById('tl').addEventListener('change',function(e){
   if(e.target.classList.contains('et')) editSet(curDay,si,'t',e.target.value);
   else if(e.target.classList.contains('es')) editSet(curDay,si,'stay',Math.max(0,+e.target.value||0));
   else if(e.target.classList.contains('ex')) editSet(curDay,si,'fix',e.target.checked);
+  else return;
   render(curDay);
+});
+/* 장소 바꾸기 — 버튼으로 열고, 하나를 고르거나 다시 누르면 닫힌다 */
+document.getElementById('tl').addEventListener('click',function(e){
+  if(!editOn) return;
+  const 여닫기=e.target.closest('.epb');
+  if(여닫기){
+    const si=+여닫기.closest('.erow').dataset.si;
+    pickSi=(pickSi===si)?-1:si; pickQ='';
+    render(curDay);
+    return;
+  }
+  const 상자=e.target.closest('.epick');
+  if(!상자) return;
+  const si=+상자.dataset.si;
+  /* 목록에 없는 곳은 이름만 바꾼다. 좌표를 모르면 이동시간을 못 내므로 원래 것을 지킨다. */
+  if(e.target.closest('.epown')){
+    const 지금=stopsOf(curDay)[si]||{};
+    const 이름=(prompt('바꿀 이름을 적으세요 — 좌표는 그대로 둡니다',지금.n||'')||'').trim();
+    if(!이름) return;
+    editSet(curDay,si,'place',{n:이름,ll:지금.ll});
+    pickSi=-1; render(curDay);
+    return;
+  }
+  const 고름=e.target.closest('li[data-p]');
+  if(!고름) return;
+  const x=pickList(curDay,si,pickQ)[+고름.dataset.p];
+  if(x) editSet(curDay,si,'place',{n:x.n,ll:x.ll});
+  pickSi=-1; render(curDay);
+});
+/* 검색어를 고치면 후보만 갈아 끼운다 — 전체를 다시 그리면 글자를 칠 수 없다 */
+document.getElementById('tl').addEventListener('input',function(e){
+  if(!editOn||!e.target.classList.contains('eqi')) return;
+  const 상자=e.target.closest('.epick'); if(!상자) return;
+  pickQ=e.target.value;
+  const ul=상자.querySelector('ul');
+  if(ul) ul.innerHTML=pickItems(curDay,+상자.dataset.si,pickQ);
 });
 initMap();
 render(0);
