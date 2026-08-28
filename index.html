@@ -2100,6 +2100,32 @@ function paintRoute(co,color,dashed){
   L.polyline(co,{interactive:false,color:color,weight:4,opacity:.95,lineJoin:'round',lineCap:'round',
     dashArray:dashed?'9 6':null}).addTo(routeLyr);
 }
+/* 두 곳 사이 이동시간(분). 경로 서버의 실제 도로 소요시간을 쓰고,
+   막히면 추정으로 넘어간다 — 계산이 멈추면 편집기를 못 쓰게 되기 때문이다.
+   좌표쌍마다 캐시해 같은 구간을 두 번 묻지 않는다. */
+const rideCache={};
+function rideKey(a,b){ return a[0].toFixed(4)+','+a[1].toFixed(4)+'>'+b[0].toFixed(4)+','+b[1].toFixed(4); }
+function rideNow(a,b){
+  if(!a||!b) return null;
+  const k=rideKey(a,b);
+  return rideCache[k]!==undefined ? rideCache[k] : guessMin(a,b);
+}
+async function rideFetch(a,b){
+  if(!a||!b) return null;
+  const k=rideKey(a,b);
+  if(rideCache[k]!==undefined) return rideCache[k];
+  try{
+    const url='https://router.project-osrm.org/route/v1/driving/'
+      +a[1]+','+a[0]+';'+b[1]+','+b[0]+'?overview=false';
+    const j=await (await fetch(url)).json();
+    const r=j&&j.routes&&j.routes[0];
+    if(r&&typeof r.duration==='number'){
+      rideCache[k]=Math.round(r.duration/60);
+      return rideCache[k];
+    }
+  }catch(e){}
+  return guessMin(a,b);
+}
 async function drawRoute(i,pts,color){
   /* 1) 내장 경로를 먼저 그린다 — 네트워크와 무관하게 항상 도로를 따라간다 */
   const base=PATHS[i]&&PATHS[i].length>1 ? PATHS[i] : pts;
