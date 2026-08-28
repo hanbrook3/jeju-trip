@@ -13,6 +13,8 @@
      일정줌·여행지줌·맛집줌 15     카드를 열면 세 탭 모두 같은 배율
      탭통일 {패널 true, 안움직임 true, 선택표시 1}  여행지·맛집 카드도 일정 탭처럼 반응하는가
      점클릭 {일치 true, 간격 8}   지도 점을 누르면 그 카드가 열리고 지도 바로 아래로 온다
+     지도통합 {거친탭 "trip,spot,food", 한곳수정이_세탭에 true}
+     핀참조 {일정 5, 여행지 0}     탭을 바꾸면 번호 핀 참조가 비워져야 한다
      길찾기 0            카카오맵 길찾기 버튼은 없앴다 — 다시 생기면 0 이 아니다
      섬전체 {줌 9, 다보임 true}
      전체보기 667 / 닫기 213±1
@@ -43,7 +45,6 @@
   o.배지불일치 = bad; o.핀합계 = pins;
   o.지적경계 = AREAS.length; o.경로 = Object.keys(PATHS).length;
   o.길찾기 = document.querySelectorAll('a[href*="map.kakao.com/link/to"]').length;
-
 
   /* 2) 핀을 누르면 그 일정 카드 "상단" 이 지도 바로 아래로 와야 한다 */
   document.querySelectorAll('#daytabs .dtab')[0].click(); await w(700);
@@ -93,6 +94,27 @@
   o.점클릭 = { 일치: op?.querySelector('.ftit b')?.textContent === sp.n,
     간격: op ? Math.round(op.getBoundingClientRect().top
       - document.querySelector('.stickytop').getBoundingClientRect().bottom) : null };
+
+  /* 3-3) 세 탭의 지도가 통합 함수 한 곳을 거치는가.
+         `drawMapFor` 를 잠깐 감싸 배율 하나만 바꿔 보고, 세 탭이 모두 따라오는지 본다.
+         지도 그리는 코드를 탭별로 되돌리면 여기서 걸린다. */
+  const seen = [], origDraw = window.drawMapFor;
+  window.drawMapFor = function (m) { seen.push(m); origDraw(m);
+    try { map.setView(map.getCenter(), 12, { animate: false }); } catch (e) {} };
+  const z = {};
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(1900); z.일정 = map.getZoom();
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1900); z.여행지 = map.getZoom();
+  document.querySelector('.mtab[data-m="food"]').click(); await w(1900); z.맛집 = map.getZoom();
+  window.drawMapFor = origDraw;
+  o.지도통합 = { 거친탭: seen.join(','),
+    한곳수정이_세탭에: z.일정 === 12 && z.여행지 === 12 && z.맛집 === 12 };
+
+  /* 3-4) 탭을 바꾸면 일정 탭의 번호 핀 참조가 남지 않아야 한다.
+         남으면 focusStop 이 지워진 마커를 만진다. */
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(1800);
+  const pinTrip = pinRefs.length;
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1800);
+  o.핀참조 = { 일정: pinTrip, 여행지: pinRefs.length };
 
   /* 4) 지도 조작 버튼 세 개 */
   document.querySelector('.mtab[data-m="trip"]').click(); await w(1200);

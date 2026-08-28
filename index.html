@@ -2266,33 +2266,54 @@ function drawPoi(){
   setTimeout(declutter,0);
 }
 
-function renderMap(i){
+/* ══════ 지도 다시 그리기 — 세 탭이 이 함수 하나를 쓴다 ══════
+   레이어를 비우고 · 점을 찍고 · 범위를 맞추는 절차는 여기 한 곳에만 있다.
+   탭마다 다른 것은 MAPPTS 의 "어떤 점들에 지도를 맞출 것인가" 뿐이고,
+   번호 핀과 경로선은 일정 탭에만 더 얹는다.
+   지도 동작은 반드시 여기서 고친다 — 탭별로 따로 두면 한쪽만 고쳐진다. */
+const MAPPTS={
+  trip:()=>D[curDay].stops.filter(s=>s.ll),
+  spot:()=>spotList(),
+  food:()=>foodList().filter(f=>f.ll),
+};
+function drawMapFor(mode){
   if(!mapReady){ initMap(); }
   if(!map||!routeLyr||!pinLyr||!poiLyr) return;
   try{
+    map.stop();
     routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
-    drawPoi();
-    const d=D[i], pts=d.stops.filter(s=>s.ll);
-    if(!pts.length) return;
     pinRefs=[];
-    pts.forEach((s,n)=>{
-      const cls=s.ty==='meal'?'meal':s.ty==='ship'?'ship':'spot';
-      const fl=s.ll[1]>126.72?' flip':'';
-      const mk=L.marker(s.ll,{interactive:true,keyboard:false,
-        icon:L.divIcon({className:'pin '+cls+fl,iconSize:[26,26],iconAnchor:[13,13],
-          html:'<b>'+(n+1)+'</b><span>'+s.n+'</span>'})}).addTo(pinLyr);
-      mk.on('click',function(){
-        const d=tl.querySelector('details.stop[data-k="'+n+'"]');
-        if(!d) return;
-        d.open=true;
-        scrollUnderMap(d);
-      });
-      pinRefs.push(mk);
-    });
-    fitMap(pts.map(s=>s.ll));
+    drawPoi();
+    const items=(MAPPTS[mode]||MAPPTS.trip)();
+    if(mode==='trip') drawDayPins(items);
+    let pts=items.map(x=>x.ll);
+    /* 진도항이 섞이면 제주가 화면에서 작아진다 — 제주 안의 점이 있으면 그것만 잡는다 */
+    const jeju=pts.filter(p=>p[0]<33.7);
+    if(jeju.length) pts=jeju;
+    fitMap(pts);
     syncZoom();
-    if(pts.length>1) drawRoute(i,pts.map(s=>s.ll),DAYCOLOR[i]);
+    if(mode==='trip'&&items.length>1) drawRoute(curDay,items.map(s=>s.ll),DAYCOLOR[curDay]);
   }catch(e){}
+}
+/* 지금 보고 있는 탭의 지도를 다시 그린다 */
+function redrawMap(){ drawMapFor(curMode); }
+
+/* 일정 탭에만 있는 것 — 번호 핀. 누르면 그 정차지 카드가 열린다 */
+function drawDayPins(stops){
+  stops.forEach(function(s,n){
+    const cls=s.ty==='meal'?'meal':s.ty==='ship'?'ship':'spot';
+    const fl=s.ll[1]>126.72?' flip':'';
+    const mk=L.marker(s.ll,{interactive:true,keyboard:false,
+      icon:L.divIcon({className:'pin '+cls+fl,iconSize:[26,26],iconAnchor:[13,13],
+        html:'<b>'+(n+1)+'</b><span>'+s.n+'</span>'})}).addTo(pinLyr);
+    mk.on('click',function(){
+      const d=tl.querySelector('details.stop[data-k="'+n+'"]');
+      if(!d) return;
+      d.open=true;
+      scrollUnderMap(d);
+    });
+    pinRefs.push(mk);
+  });
 }
 function focusStop(el){
   try{
@@ -2353,7 +2374,7 @@ if(mapbtn) mapbtn.addEventListener('click',function(){
   mapbtn.textContent=mapOn?'지도 접기':'지도 펼치기';
   mapbtn.setAttribute('aria-expanded',mapOn);
   if(mapOn){ initMap(); setTimeout(function(){ try{ if(!map) return; map.invalidateSize();
-    if(curMode==='food') renderFoodMap(); else if(curMode==='spot') renderSpotMap(); else renderMap(curDay);
+    redrawMap();
   }catch(e){} },60); }
 });
 
@@ -3308,18 +3329,6 @@ function renderSpotCards(){
     </details>`;}).join('');
 }
 function renderSpot(){ renderSpotAxis(); renderSpotFilter(); renderSpotCards(); }
-function renderSpotMap(){
-  if(!map||!routeLyr||!pinLyr||!poiLyr) return;
-  try{
-    map.stop();
-    routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
-    drawPoi();
-    const pts=spotList().map(s=>s.ll);
-    fitMap(pts);
-    syncZoom();
-  }catch(e){}
-}
-
 /* ══════ 오전/오후 표기 ══════ */
 function ap12(h,m){ h=+h; const label=h<12?'오전':'오후'; let hh=h%12; if(hh===0)hh=12; return [label,hh+':'+m]; }
 function apText(v){
@@ -3373,7 +3382,7 @@ function render(i){
       ${has?CH:'<span></span>'}</summary>${has?detail(s):''}</details>`;}).join('');
   tl.querySelectorAll('details[data-x]').forEach(x=>x.querySelector('summary').style.cursor='default');
   curDay=i;
-  if(mapOn){ if(mapReady||typeof L!=='undefined') renderMap(i); else staticMap(); }
+  if(mapOn){ if(mapReady||typeof L!=='undefined') drawMapFor('trip'); else staticMap(); }
 
 }
 tl.addEventListener('toggle',e=>{
@@ -3438,20 +3447,6 @@ function showInfo(t){
 /* ══════ 맛집 탭의 지도 ══════
    일정용 경로·번호핀은 걷어내고, 지금 걸러진 맛집들이 다 들어오게 맞춘다.
    foodList() 는 위 분류 축(지역/음식/가격)을 그대로 따른다. */
-function renderFoodMap(){
-  if(!map||!routeLyr||!pinLyr||!poiLyr) return;
-  try{
-    routeLyr.clearLayers(); pinLyr.clearLayers(); poiLyr.clearLayers();
-    drawPoi();
-    map.stop();
-    let pts=foodList().filter(f=>f.ll).map(f=>f.ll);
-    /* '전체'에는 진도가 섞여 있다. 제주만 잡아야 섬이 화면에 꽉 찬다 */
-    if(foodZone==='전체'){ const j=pts.filter(p=>p[0]<33.7); if(j.length) pts=j; }
-    fitMap(pts);
-    syncZoom();
-  }catch(e){}
-}
-
 /* ══════ 상단 모드 전환 — 여행 일정 / 맛집 / 준비물 ══════ */
 const MODES={
   trip:{view:'tripview',days:true,map:true},
@@ -3483,13 +3478,7 @@ function setMode(m,opt){
     /* 크기 재계산과 화면 이동은 한 틱 떼어놓는다 — 붙이면 이동이 취소된다 */
     setTimeout(()=>{
       try{ map.invalidateSize(); }catch(e){}
-      setTimeout(()=>{
-        try{
-          if(m==='food') renderFoodMap();
-          else if(m==='spot') renderSpotMap();
-          else renderMap(curDay);
-        }catch(e){}
-      },50);
+      setTimeout(()=>{ try{ drawMapFor(m); }catch(e){} },50);
     },60);
   }
   if(!(opt&&opt.noScroll)) window.scrollTo({top:0,behavior:'smooth'});
@@ -3518,7 +3507,7 @@ document.getElementById('foodfilter').addEventListener('click',e=>{
     x.classList.toggle('on',on);
     x.setAttribute('aria-selected',on?'true':'false');
   });
-  renderFoodCards(); hideInfo(); renderFoodMap();
+  renderFoodCards(); hideInfo(); redrawMap();
 });
 /* 지도에서 보기 — 맛집 탭에 머문 채로 지도만 확대한다 */
 /* 전체보기 — 지도를 화면 가득 채운다. 다시 누르면 원래대로. */
@@ -3545,9 +3534,7 @@ function fitCurrent(){
   try{
     if(!map) return;
     map.stop();
-    if(curMode==='food') renderFoodMap();
-    else if(curMode==='spot') renderSpotMap();
-    else renderMap(curDay);
+    redrawMap();
   }catch(e){}
 }
 document.getElementById('mapall').addEventListener('click',toggleMapFull);
@@ -3560,7 +3547,7 @@ document.getElementById('dayintro').addEventListener('click',fitCurrent);
 document.getElementById('spotaxis').addEventListener('click',e=>{
   const b=e.target.closest('.fax'); if(!b||b.dataset.ax===spotAxis) return;
   spotAxis=b.dataset.ax; spotSel='전체';
-  renderSpot(); hideInfo(); renderSpotMap();
+  renderSpot(); hideInfo(); redrawMap();
 });
 document.getElementById('spotfilter').addEventListener('click',e=>{
   const c=e.target.closest('.fchip'); if(!c) return;
@@ -3569,7 +3556,7 @@ document.getElementById('spotfilter').addEventListener('click',e=>{
     const on=x.dataset.z===spotSel;
     x.classList.toggle('on',on); x.setAttribute('aria-selected',on?'true':'false');
   });
-  renderSpotCards(); hideInfo(); renderSpotMap();
+  renderSpotCards(); hideInfo(); redrawMap();
 });
 document.getElementById('spotcards').addEventListener('toggle',e=>{
   const el=e.target;
@@ -3587,7 +3574,7 @@ document.getElementById('foodkind').addEventListener('click',e=>{
   /* 지금 축이 이 구분에서 값이 하나뿐이면 지역 축으로 되돌린다 */
   const base=kindList();
   if(new Set(base.map(AXES[foodAxis].key)).size<=1) foodAxis='zone';
-  renderFood(); hideInfo(); renderFoodMap();
+  renderFood(); hideInfo(); redrawMap();
 });
 
 /* 분류 기준 전환 — 지역 / 음식 / 가격 */
@@ -3595,7 +3582,7 @@ document.getElementById('foodaxis').addEventListener('click',e=>{
   const b=e.target.closest('.fax'); if(!b) return;
   if(b.dataset.ax===foodAxis) return;
   foodAxis=b.dataset.ax; foodZone='전체';
-  renderFood(); hideInfo(); renderFoodMap();
+  renderFood(); hideInfo(); redrawMap();
 });
 
 /* 맛집 카드 — 여행 일정과 같은 방식.
@@ -3624,9 +3611,7 @@ setTimeout(function(){
   try{
     if(!map) return;
     map.invalidateSize();
-    if(curMode==='food') renderFoodMap();
-    else if(curMode==='spot') renderSpotMap();
-    else renderMap(curDay);
+    redrawMap();
   }catch(e){}
 },220);
 /* 첫 서버가 조용히 죽는 경우가 있어 시간을 재서 다음 서버로 넘긴다 */
