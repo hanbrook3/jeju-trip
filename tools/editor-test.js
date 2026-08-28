@@ -17,7 +17,8 @@ try {
   new Function('__out', code + '\n__out.hm2min=hm2min; __out.min2hm=min2hm;' +
     ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;' +
     ' __out.recalc=recalc; __out.mealWarn=mealWarn;' +
-    ' __out.openHours=openHours; __out.offDay=offDay; __out.spotWarn=spotWarn;')(API);
+    ' __out.openHours=openHours; __out.offDay=offDay; __out.spotWarn=spotWarn;' +
+    ' __out.fixWarn=fixWarn;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -265,6 +266,13 @@ console.log('\n[지금 일정에 대 보기]');
   걸린것.forEach(function(x){ console.log('  ※ '+x); });
   확인('지금 일정에서 걸리는 곳은 1건(유민미술관 화요일 휴무)', 걸린것.length, 1);
 }
+
+console.log('\n[경고 — 못 박은 시각]');
+확인('제때 도착하면 이상 없음', API.fixWarn('진도항 도착','11:05','11:05'), null);
+확인('일찍 도착해도 이상 없음', API.fixWarn('진도항 도착','11:05','10:40'), null);
+확인('늦으면 경고', API.fixWarn('진도항 도착','11:05','11:20'),
+  '진도항 도착이 오전 11시 20분으로 계산됩니다. 오전 11시 5분까지 도착해야 합니다.');
+확인('시각을 못 읽으면 경고 없음', API.fixWarn('진도항 도착','','11:20'), null);
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;

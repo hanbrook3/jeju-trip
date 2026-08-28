@@ -2803,6 +2803,14 @@ function spotWarn(spot,요일,시각){
     return '도착이 '+hmKo(시각)+'인데 '+spot.n+조사(spot.n,'은','는')+' '+hmKo(min2hm(시.open))+'에 엽니다.';
   return null;
 }
+/* 못 박은 시각보다 늦게 도착하는가. 배 시간처럼 놓치면 안 되는 것에 쓴다 */
+function fixWarn(이름,못박은,계산된){
+  const a=hm2min(못박은), b=hm2min(계산된);
+  if(a===null||b===null||b<=a) return null;
+  const 지금=hmKo(계산된);
+  return 이름+조사(이름,'이','가')+' '+지금+조사(지금,'으로','로')+' 계산됩니다. '+
+         hmKo(못박은)+'까지 도착해야 합니다.';
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
