@@ -16,7 +16,7 @@ const API = {};
 try {
   new Function('__out', code + '\n__out.hm2min=hm2min; __out.min2hm=min2hm;' +
     ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;' +
-    ' __out.recalc=recalc;')(API);
+    ' __out.recalc=recalc; __out.mealWarn=mealWarn;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -212,6 +212,20 @@ function 하루재료(d){
   확인('확인3 · 2일차 「'+m.stops[k].n+'」 에 30분 더 머물면 그 앞 0분·그 뒤 30분',
        [m.stops.length,어긋남], [10,0]);
 }
+
+console.log('\n[경고 — 식사 타이밍]');
+확인('아침 08:00 은 이상 없음', API.mealWarn('07:10','08:00'), null);
+확인('점심 12:40 은 이상 없음', API.mealWarn('12:40','12:40'), null);
+확인('저녁 18:40 은 이상 없음', API.mealWarn('18:40','18:40'), null);
+확인('점심이 15:20 이면 늦다',
+  API.mealWarn('12:15','15:20'), '점심이 오후 3시 20분입니다. 너무 늦습니다.');
+확인('아침이 05:30 이면 이르다',
+  API.mealWarn('07:10','05:30'), '아침이 오전 5시 30분입니다. 너무 이릅니다.');
+확인('저녁이 21:10 이면 늦다',
+  API.mealWarn('18:40','21:10'), '저녁이 오후 9시 10분입니다. 너무 늦습니다.');
+확인('끼니는 원래 시각으로 정한다 — 점심을 16시로 밀어도 저녁이 아니다',
+  API.mealWarn('12:15','16:00'), '점심이 오후 4시입니다. 너무 늦습니다.');
+확인('시각을 못 읽으면 경고 없음', API.mealWarn('12:15',''), null);
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;

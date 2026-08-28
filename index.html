@@ -2744,6 +2744,27 @@ function recalc(stops,opt){
   return { arrive:arrive.map(min2hm), depart:depart.map(min2hm),
            arriveMin:arrive, departMin:depart };
 }
+/* 오전/오후 한국어 표기 — 경고 문구에 쓴다 */
+function hmKo(v){
+  const n=hm2min(v); if(n===null) return String(v);
+  const h=Math.floor(n/60)%24, m=n%60;
+  const 라벨=h<12?'오전':'오후';
+  let hh=h%12; if(hh===0) hh=12;
+  return 라벨+' '+hh+'시'+(m?' '+m+'분':'');
+}
+/* 식사 시각이 알맞은 때인가.
+   어느 끼니인지는 배포판에 적힌 원래 시각으로 정하고 편집 중에 바뀌지 않는다 —
+   점심을 16시로 밀었을 때 "저녁이 이르다" 로 뒤집히면 안 되기 때문이다. */
+var MEAL_창={아침:[390,570],점심:[690,840],저녁:[1050,1200]};
+function mealWarn(원래,지금){
+  const o=hm2min(원래), n=hm2min(지금);
+  if(o===null||n===null) return null;
+  const 끼니 = o<660 ? '아침' : (o<900 ? '점심' : '저녁');
+  const [이른,늦은]=MEAL_창[끼니];
+  if(n<이른) return 끼니+'이 '+hmKo(지금)+'입니다. 너무 이릅니다.';
+  if(n>늦은) return 끼니+'이 '+hmKo(지금)+'입니다. 너무 늦습니다.';
+  return null;
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
