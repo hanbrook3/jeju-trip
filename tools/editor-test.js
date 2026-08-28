@@ -16,7 +16,8 @@ const API = {};
 try {
   new Function('__out', code + '\n__out.hm2min=hm2min; __out.min2hm=min2hm;' +
     ' __out.km=km; __out.guessMin=guessMin; __out.fillStay=fillStay;' +
-    ' __out.recalc=recalc; __out.mealWarn=mealWarn;')(API);
+    ' __out.recalc=recalc; __out.mealWarn=mealWarn;' +
+    ' __out.openHours=openHours; __out.offDay=offDay; __out.spotWarn=spotWarn;')(API);
 } catch (e) {
   console.error('계산 블록 실행 실패:', e.message); process.exit(1);
 }
@@ -87,23 +88,24 @@ console.log('\n[머무는 시간 자동 채우기]');
   확인('시각을 못 읽으면 60', r[0], 60);
 }
 
-/* index.html 에서 꺼낸 배포판 일정. 아래 두 절이 함께 쓴다 */
+/* index.html 의 최상위 const 선언 하나를 통째로 꺼낸다 (D, SPOT …) */
+function grab(name){
+  const key='const '+name+'=', i=h.indexOf(key);
+  let j=i+key.length, depth=0, inStr=null, esc=false;
+  const open=h[j], close=open==='['?']':'}';
+  for(;j<h.length;j++){ const c=h[j];
+    if(esc){esc=false;continue;}
+    if(inStr){ if(c==='\\')esc=true; else if(c===inStr)inStr=null; continue; }
+    if(c==='"'||c==="'"||c==='`'){inStr=c;continue;}
+    if(c===open)depth++; else if(c===close){depth--; if(depth===0){j++;break;}} }
+  return eval('('+h.slice(i+key.length,j)+')');
+}
+
+/* index.html 에서 꺼낸 배포판 일정. 아래 여러 절이 함께 쓴다 */
 let D;
 
 console.log('\n[진짜 일정으로 확인]');
 {
-  /* index.html 의 D 를 꺼낸다 */
-  function grab(name){
-    const key='const '+name+'=', i=h.indexOf(key);
-    let j=i+key.length, depth=0, inStr=null, esc=false;
-    const open=h[j], close=open==='['?']':'}';
-    for(;j<h.length;j++){ const c=h[j];
-      if(esc){esc=false;continue;}
-      if(inStr){ if(c==='\\')esc=true; else if(c===inStr)inStr=null; continue; }
-      if(c==='"'||c==="'"||c==='`'){inStr=c;continue;}
-      if(c===open)depth++; else if(c===close){depth--; if(depth===0){j++;break;}} }
-    return eval('('+h.slice(i+key.length,j)+')');
-  }
   D=grab('D');
   /* 이동시간을 추정으로 넣고 stay 를 역산한 뒤, 그 값으로 시각을 다시 쌓으면
      원래 시각이 그대로 나와야 한다 */
@@ -226,6 +228,43 @@ console.log('\n[경고 — 식사 타이밍]');
 확인('끼니는 원래 시각으로 정한다 — 점심을 16시로 밀어도 저녁이 아니다',
   API.mealWarn('12:15','16:00'), '점심이 오후 4시입니다. 너무 늦습니다.');
 확인('시각을 못 읽으면 경고 없음', API.mealWarn('12:15',''), null);
+
+console.log('\n[경고 — 운영시간과 휴무일]');
+확인('운영시간 읽기', API.openHours('09:00 ~ 18:00 (매표 마감 17:20)'), {open:540,close:1080});
+확인('물결 없는 형식도', API.openHours('10:00-16:00'), {open:600,close:960});
+확인('괄호 안 시각도 잡는다', API.openHours('외부 상시 개방 · 내부 관람은 일정에 따라 제한 (보통 10:00~16:00)'),
+  {open:600,close:960});
+확인('상시 개방은 시각 없음', API.openHours('상시 개방'), null);
+확인('휴무 요일 읽기', API.offDay('매주 화요일'), '화');
+확인('연중무휴는 없음', API.offDay('연중무휴 (폭우 시 안전상 통제)'), null);
+확인('매월 첫째는 안 잡는다', API.offDay('매월 첫째 월요일 (정상 탐방로만 휴무)'), null);
+확인('여러 요일 중 첫째만', API.offDay('매주 월요일, 신정, 설날, 추석'), '월');
+
+const 유민={n:'유민미술관',open:'09:00 ~ 18:00 (매표 마감 17:20)',off:'매주 화요일'};
+const 일출봉={n:'성산일출봉',open:'07:30 ~ 19:00',off:'연중무휴'};
+확인('화요일 유민미술관은 휴무 경고',
+  API.spotWarn(유민,'화','14:00'), '이날은 화요일입니다. 유민미술관은 매주 화요일 휴무입니다.');
+확인('수요일이면 이상 없음', API.spotWarn(유민,'수','14:00'), null);
+확인('닫은 뒤 도착',
+  API.spotWarn(일출봉,'화','19:40'), '도착이 오후 7시 40분인데 성산일출봉은 오후 7시에 문을 닫습니다.');
+확인('열기 전 도착',
+  API.spotWarn(일출봉,'화','06:00'), '도착이 오전 6시인데 성산일출봉은 오전 7시 30분에 엽니다.');
+확인('영업 중이면 이상 없음', API.spotWarn(일출봉,'화','10:55'), null);
+확인('자료가 없으면 경고 없음', API.spotWarn(null,'화','10:00'), null);
+
+console.log('\n[지금 일정에 대 보기]');
+{
+  /* index.html 의 D 와 SPOT 을 맞대 실제로 걸리는 곳을 센다 */
+  const SPOT=grab('SPOT');
+  const by={}; SPOT.forEach(function(s){ by[s.n]=s; });
+  const 걸린것=[];
+  D.forEach(function(d,i){ d.stops.forEach(function(s){
+    const w=API.spotWarn(by[s.n], d.dw.split(' ')[0], s.t);
+    if(w) 걸린것.push((i+1)+'일차 '+w);
+  }); });
+  걸린것.forEach(function(x){ console.log('  ※ '+x); });
+  확인('지금 일정에서 걸리는 곳은 1건(유민미술관 화요일 휴무)', 걸린것.length, 1);
+}
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;

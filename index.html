@@ -2765,6 +2765,44 @@ function mealWarn(원래,지금){
   if(n>늦은) return 끼니+'이 '+hmKo(지금)+'입니다. 너무 늦습니다.';
   return null;
 }
+/* 앞 낱말의 받침에 맞춰 조사를 고른다. 여행지 이름이 자료에서 오기 때문에
+   '유민미술관은(는)' 처럼 굳은 표기를 쓰지 않으려면 받침을 봐야 한다.
+   한글이 아닌 글자로 끝나면 받침 있는 쪽을 쓴다. */
+function 조사(말,있을때,없을때){
+  const s=String(말||'').trim();
+  if(!s) return 있을때;
+  const c=s.charCodeAt(s.length-1);
+  if(c<0xAC00||c>0xD7A3) return 있을때;
+  return (c-0xAC00)%28 ? 있을때 : 없을때;
+}
+/* 운영시간 문구에서 여는·닫는 시각을 뽑는다. 못 읽으면 null —
+   '상시 개방' 처럼 시각이 없는 곳에 억지 경고를 붙이지 않기 위해서다.
+   48곳 중 26곳이 읽힌다(2026-08-28 실측). */
+function openHours(v){
+  const m=/(\d{1,2}):(\d{2})\s*[~\-]\s*(\d{1,2}):(\d{2})/.exec(String(v||''));
+  if(!m) return null;
+  return { open:(+m[1])*60+(+m[2]), close:(+m[3])*60+(+m[4]) };
+}
+/* 휴무 문구에서 매주 쉬는 요일을 뽑는다.
+   '매월 첫째 월요일' '기상 악화 시 통제' 처럼 요일 하나로 정리되지 않는 것은 잡지 않는다. */
+function offDay(v){
+  const m=/매주\s*([월화수목금토일])요일/.exec(String(v||''));
+  return m ? m[1] : null;
+}
+/* 여행지 한 곳에 대한 경고. spot 은 SPOT 배열의 항목, 요일은 '화', 시각은 'HH:MM' */
+function spotWarn(spot,요일,시각){
+  if(!spot) return null;
+  const 쉬는날=offDay(spot.off);
+  if(쉬는날&&쉬는날===요일)
+    return '이날은 '+요일+'요일입니다. '+spot.n+조사(spot.n,'은','는')+' 매주 '+쉬는날+'요일 휴무입니다.';
+  const 시=openHours(spot.open), n=hm2min(시각);
+  if(!시||n===null) return null;
+  if(n>시.close)
+    return '도착이 '+hmKo(시각)+'인데 '+spot.n+조사(spot.n,'은','는')+' '+hmKo(min2hm(시.close))+'에 문을 닫습니다.';
+  if(n<시.open)
+    return '도착이 '+hmKo(시각)+'인데 '+spot.n+조사(spot.n,'은','는')+' '+hmKo(min2hm(시.open))+'에 엽니다.';
+  return null;
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
