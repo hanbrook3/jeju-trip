@@ -2691,6 +2691,26 @@ function min2hm(v){
   const n=Math.max(0,Math.round(v));
   return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
 }
+/* 두 좌표 사이 직선거리(km) */
+function km(a,b){
+  if(!a||!b) return null;
+  const R=6371, r=Math.PI/180;
+  const s=Math.sin((b[0]-a[0])*r/2)**2
+        + Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+/* 경로 서버가 막혔을 때 쓰는 이동시간 추정(분).
+   직선거리에 우회율 1.3 을 얹고, 짧을수록 느린 실제 특성을 반영해
+   속도를 도로거리에 비례해 올리되 52km/h 에서 멈춘다.
+   2026-08-28 제주 안 여섯 구간 실측 기준으로 맞췄다. */
+function guessMin(a,b){
+  const d=km(a,b);
+  if(d===null) return null;
+  if(d<0.05) return 0;
+  const 도로=d*1.3;
+  const 속도=Math.min(52, 16+도로*3);
+  return Math.round(도로/속도*60);
+}
 /* ══════ 일정 계산 끝 ══════ */
 
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
