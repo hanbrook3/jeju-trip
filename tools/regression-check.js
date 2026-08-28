@@ -10,7 +10,9 @@
      핀합계 30           5일치 정차지 합계
      지적경계 11 / 경로 5
      핀클릭.간격 8       핀을 누르면 카드 상단이 지도 바로 아래 8px 에 온다
-     일정줌·여행지줌·맛집줌 15     카드를 열면 세 탭 모두 같은 배율
+     배율 {미술관 14, 일출봉 13, 숲길 12, 맛집 14, 일정_일출봉 13}
+                         장소 크기에 맞춘 배율. 넷이 다 같아지면 통일로 되돌아간 것이고,
+                         일정_일출봉 이 일출봉과 다르면 탭 사이가 어긋난 것이다
      탭통일 {패널 true, 안움직임 true, 선택표시 1}  여행지·맛집 카드도 일정 탭처럼 반응하는가
      점클릭 {일치 true, 간격 8}   지도 점을 누르면 그 카드가 열리고 지도 바로 아래로 온다
      지도통합 {거친탭 "trip,spot,food", 한곳수정이_세탭에 true}
@@ -59,15 +61,27 @@
   o.핀클릭 = { k: d?.dataset.k,
     간격: Math.round(d.getBoundingClientRect().top - document.querySelector('.stickytop').getBoundingClientRect().bottom) };
 
-  /* 3) 카드를 열면 세 탭 모두 같은 배율(FOCUS_ZOOM=15) */
-  document.querySelector('#tl details.stop[data-lat] summary').click(); await w(900);
-  o.일정줌 = map.getZoom();
-  document.querySelector('.mtab[data-m="spot"]').click(); await w(1500);
-  document.querySelector('#spotcards details summary').click(); await w(1200);
-  o.여행지줌 = map.getZoom();
-  document.querySelector('.mtab[data-m="food"]').click(); await w(1500);
-  document.querySelector('#foodcards details summary').click(); await w(1200);
-  o.맛집줌 = map.getZoom();
+  /* 3) 카드를 열면 그 장소의 크기에 맞는 배율로 들어간다.
+        한 값으로 통일하지 않는다 — 미술관은 가까이, 숲길은 멀리.
+        그리고 같은 장소는 탭이 달라도 같은 배율이어야 한다. */
+  document.querySelector('.mtab[data-m="spot"]').click(); await w(1600);
+  const 배율재기 = async (n) => {
+    const i = SPOT.findIndex(x => x.n === n);
+    document.querySelectorAll('#spotcards details[open]').forEach(x => x.open = false); await w(250);
+    document.querySelector('#spotcards details[data-si="' + i + '"]').querySelector('summary').click();
+    await w(1100); return map.getZoom();
+  };
+  o.배율 = { 미술관: await 배율재기('유민미술관'), 일출봉: await 배율재기('성산일출봉'),
+             숲길: await 배율재기('사려니숲길') };
+  document.querySelector('.mtab[data-m="food"]').click(); await w(1600);
+  document.querySelector('#foodcards details summary').click(); await w(1100);
+  o.배율.맛집 = map.getZoom();
+  document.querySelector('.mtab[data-m="trip"]').click(); await w(1600);
+  document.querySelectorAll('#daytabs .dtab')[1].click(); await w(1200);
+  const 일출봉카드 = [...document.querySelectorAll('#tl details.stop[data-lat]')]
+    .find(el => (D[1].stops.filter(x => x.ll)[+el.dataset.k] || {}).n === '성산일출봉');
+  if (일출봉카드) { 일출봉카드.querySelector('summary').click(); await w(1000); }
+  o.배율.일정_일출봉 = map.getZoom();
 
   /* 3-1) 여행지·맛집 카드도 일정 탭처럼 반응하는가.
          카드를 열면 지도 아래 패널이 뜨지 않고, 화면이 움직이지 않고, 그 점이 선택 표시된다.

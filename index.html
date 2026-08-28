@@ -2185,22 +2185,22 @@ function markSelAt(ll){
   markSel(hit);
 }
 /* 여행지·맛집 카드를 열었을 때 — 일정 탭의 focusStop 과 같은 방식으로 움직인다 */
-function focusPoi(ll){
+function focusPoi(ll,z){
   try{
     if(!map||!ll) return;
     map.stop();
-    map.setView(ll,buildState==='vec'?11:FOCUS_ZOOM,{animate:false});
+    map.setView(ll,buildState==='vec'?11:(z||ZOOM_BASE),{animate:false});
     markSelAt(ll);
   }catch(e){}
 }
 /* 지도 점을 눌렀을 때 지금 탭에 그 카드가 있으면 연다.
    일정 탭에서 핀을 누르면 카드가 열리는 것과 같게 맞춘 것이다.
    카드가 없으면(다른 탭이거나 걸러진 항목이면) false 를 돌려 패널로 넘긴다. */
-function openCard(mode,box,attr,i,ll){
+function openCard(mode,box,attr,i,ll,z){
   if(curMode!==mode) return false;
   const el=document.querySelector('#'+box+' details['+attr+'="'+i+'"]');
   if(!el) return false;
-  if(el.open){ hideInfo(); focusPoi(ll); } else { el.open=true; }
+  if(el.open){ hideInfo(); focusPoi(ll,z); } else { el.open=true; }
   scrollUnderMap(el);
   return true;
 }
@@ -2217,8 +2217,21 @@ function markSel(marker){
    개요 성격의 화면에서는 제주 본섬이 잘리면 안 된다. 잘리면 사용자가 다시 줌아웃해야 한다.
    섬을 넓게 훑는 화면이면 데이터 범위 대신 섬 범위에 맞춘다. */
 const JEJU=[[33.192,126.150],[33.566,126.946]];
-/* 한 곳을 골랐을 때 들어가는 배율 — 일정·여행지·맛집 모두 같다 */
-const FOCUS_ZOOM=15;
+/* 한 곳을 골랐을 때 들어가는 배율 — 장소가 얼마나 넓은가에 맞춘다.
+   한 값으로 통일하면 미술관에 맞춘 배율에서 사려니숲길은 숲 한가운데만 보이고,
+   숲길에 맞춘 배율에서 미술관은 점이 된다.
+   숲·목장처럼 넓은 곳은 11km 폭으로, 해변·오름은 5.5km, 건물은 2.8km 로 잡았다. */
+const ZOOM_THEME={'예술·건축':14,'화산·지질':13,'숲·생태':12,'오름·폭포':13,
+                  '역사·목장':12,'해변·해안도로':13,'이색·휴식':13};
+/* 일정 정차지 — 이름이 여행지 목록에 있으면 위 표를 그대로 쓴다(30곳 중 17곳).
+   나머지는 정차지 유형으로 정한다 — 식당·숙소는 건물, 항구는 그보다 넓게. */
+const ZOOM_TY={meal:14,move:14,ship:13,spot:13};
+const ZOOM_FOOD=14, ZOOM_BASE=13;
+function spotZoom(name,ty){
+  const i=spotByName[name];
+  if(i!==undefined) return ZOOM_THEME[SPOT[i].theme]||ZOOM_BASE;
+  return ZOOM_TY[ty]||ZOOM_BASE;
+}
 /* 목록 전체를 보여줄 때 한 곳뿐이면 조금 여유 있게 */
 const ONE_ZOOM=14;
 function fitMap(pts){
@@ -2245,7 +2258,7 @@ function drawPoi(mode){
     L.marker(s.ll,{interactive:true,keyboard:false,zIndexOffset:-250,
       icon:L.divIcon({className:'poi spot'+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+s.n+'</span>'})})
-      .on('click',function(){ if(openCard('spot','spotcards','data-si',i,s.ll)) return; showInfo({kind:'spot',idx:i}); markSel(this); })
+      .on('click',function(){ if(openCard('spot','spotcards','data-si',i,s.ll,spotZoom(s.n))) return; showInfo({kind:'spot',idx:i}); markSel(this); })
       .addTo(poiLyr)._prio=4;
   });
   /* 그 밖의 명소 — 이름만 있는 옅은 점.
@@ -2267,7 +2280,7 @@ function drawPoi(mode){
     L.marker(f.ll,{interactive:true,keyboard:false,zIndexOffset:-200,
       icon:L.divIcon({className:'poi food'+(f.kind==='카페'?' cafe':'')+fl,iconSize:[12,12],iconAnchor:[6,6],
         html:'<i></i><span>'+f.n+'</span>'})})
-      .on('click',function(){ if(openCard('food','foodcards','data-fi',fi,f.ll)) return; showInfo({kind:'food',idx:fi}); markSel(this); })
+      .on('click',function(){ if(openCard('food','foodcards','data-fi',fi,f.ll,ZOOM_FOOD)) return; showInfo({kind:'food',idx:fi}); markSel(this); })
       .addTo(poiLyr)._prio=f.pick?3:2;
   });
   /* 그린 직후 한 번 정리 — 마커 요소가 DOM 에 붙은 뒤여야 한다 */
@@ -2331,9 +2344,10 @@ function focusStop(el){
     if(!map) return;
     /* 일정을 연달아 열면 flyTo 가 앞 애니메이션에 눌려 무시된다 — 즉시 이동으로 확실하게 */
     map.stop();
-    /* 여행지·맛집 카드를 열 때와 같은 배율을 쓴다 */
-    map.setView([lat,lng],buildState==='vec'?11:FOCUS_ZOOM,{animate:false});
     const k=+el.dataset.k;
+    /* 여행지·맛집 카드를 열 때와 같은 표를 쓴다 */
+    const st=D[curDay].stops.filter(function(x){return x.ll;})[k];
+    map.setView([lat,lng],buildState==='vec'?11:spotZoom(st&&st.n,st&&st.ty),{animate:false});
     pinRefs.forEach(function(m,n){
       const ic=m.getElement(); if(!ic) return;
       ic.classList.toggle('on', n===k);
@@ -3572,7 +3586,7 @@ document.getElementById('spotcards').addEventListener('toggle',e=>{
   document.querySelectorAll('#spotcards details[open]').forEach(x=>{ if(x!==el) x.open=false; });
   const s=SPOT[+el.dataset.si]; if(!s) return;
   hideInfo();
-  focusPoi(s.ll);
+  focusPoi(s.ll,spotZoom(s.n));
 },true);
 
 /* 식당 · 카페 구분 */
@@ -3602,7 +3616,7 @@ document.getElementById('foodcards').addEventListener('toggle',e=>{
   const f=FOOD[+el.dataset.fi];
   if(!f||!f.ll) return;
   hideInfo();
-  focusPoi(f.ll);
+  focusPoi(f.ll,ZOOM_FOOD);
 },true);
 
 initMap();
