@@ -2678,6 +2678,21 @@ const CAND=[
  {n:'명경식당',zone:'안덕·화순',main:'콩국수',ll:[33.247255,126.336975],
   menu:[],hours:'10:30–20:00 무휴',note:'목요일 대안',tel:'064-794-9557'}];
 
+/* ══════ 일정 계산 ══════ */
+/* 일정 편집기가 쓰는 순수 함수들. DOM 을 만지지 않는다 —
+   tools/editor-test.js 가 이 블록만 꺼내 node 에서 시험하기 때문이다. */
+/* 'HH:MM' → 분. 읽을 수 없으면 null */
+function hm2min(v){
+  const m=/^(\d{1,2}):([0-5]\d)$/.exec(String(v||'').trim());
+  return m ? (+m[1])*60 + (+m[2]) : null;
+}
+/* 분 → 'HH:MM'. 자정을 넘기면 24:05 처럼 이어서 센다 */
+function min2hm(v){
+  const n=Math.max(0,Math.round(v));
+  return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
+}
+/* ══════ 일정 계산 끝 ══════ */
+
 const telHref=t=>'tel:'+String(t).replace(/[^0-9+]/g,'');
 function actRow(tel){
   return tel?'<div class="fact"><a href="'+telHref(tel)+'">전화 '+tel+'</a></div>':'';
