@@ -2459,7 +2459,7 @@ function drawPoi(mode){
    번호 핀과 경로선은 일정 탭에만 더 얹는다.
    지도 동작은 반드시 여기서 고친다 — 탭별로 따로 두면 한쪽만 고쳐진다. */
 const MAPPTS={
-  trip:()=>D[curDay].stops.filter(s=>s.ll),
+  trip:()=>stopsOf(curDay).filter(s=>s.ll),
   spot:()=>spotList(),
   food:()=>foodList().filter(f=>f.ll),
 };
@@ -2512,7 +2512,7 @@ function focusStop(el){
     map.stop();
     const k=+el.dataset.k;
     /* 여행지·맛집 카드를 열 때와 같은 표를 쓴다 */
-    const st=D[curDay].stops.filter(function(x){return x.ll;})[k];
+    const st=stopsOf(curDay).filter(function(x){return x.ll;})[k];
     map.setView([lat,lng],buildState==='vec'?11:spotZoom(st&&st.n,st&&st.ty),{animate:false});
     pinRefs.forEach(function(m,n){
       const ic=m.getElement(); if(!ic) return;
@@ -3737,7 +3737,7 @@ function editRow(day,si,s){
     +(function(){
        const r=(p.rides&&p.rides[si]);
        if(r===null||r===undefined) return '';
-       const 거리=km(s.ll,(D[day].stops[si+1]||{}).ll);
+       const 거리=km(s.ll,(stopsOf(day)[si+1]||{}).ll);
        return '<div class="eride">↓ 이동 '+r+'분'+(거리?' · '+거리.toFixed(1)+'km':'')+'</div>';
      })();
 }
@@ -3770,7 +3770,7 @@ function render(i){
   document.getElementById('dStats').innerHTML=st.map(x=>
     `<span class="dst"><b>${apText(x[0])}</b> ${x[1]}</span>`).join('<i class="dsep">·</i>');
   let mi=0;
-  tl.innerHTML=d.stops.map((s,si)=>{
+  tl.innerHTML=stopsOf(i).map((s,si)=>{
     const has=s.feat||s.design||s.see||s.steps||s.warn||s.note;
     /* 지도 핀 번호와 같은 순서 — 둘 다 좌표 있는 일정만 세므로 항상 일치한다 */
     const k=s.ll?mi++:-1;
@@ -4311,9 +4311,18 @@ function editSet(day,idx,key,val){
   e[day][idx][key]=val;
   editSave(e);
 }
+/* 편집을 얹은 그날 정차지. 원본 D 는 건드리지 않는다.
+   장소를 바꾸면 이름과 좌표가 함께 달라져야 하므로, stops 를 읽는 곳은 전부 이걸 쓴다. */
+function stopsOf(day){
+  return D[day].stops.map(function(s,i){
+    const e=editOf(day,i);
+    if(!e.place) return s;
+    return Object.assign({}, s, { n:e.place.n, ll:e.place.ll });
+  });
+}
 /* 하루치 계산 결과를 낸다. 이동시간은 캐시에 있으면 실제값, 없으면 추정값을 쓴다 */
 function dayPlan(day){
-  const stops=D[day].stops;
+  const stops=stopsOf(day);
   const rides=[];
   for(let i=0;i<stops.length-1;i++) rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
   const stay=fillStay(stops,function(i){ return rides[i]; }).map(function(v,i){
@@ -4331,7 +4340,7 @@ function dayPlan(day){
 }
 /* 하루 경고를 모은다 */
 function dayWarns(day){
-  const stops=D[day].stops, p=dayPlan(day), 요일=D[day].dw.split(' ')[0];
+  const stops=stopsOf(day), p=dayPlan(day), 요일=D[day].dw.split(' ')[0];
   const by={}; SPOT.forEach(function(s){ by[s.n]=s; });
   return stops.map(function(s,i){
     const 지금=p.arrive[i], out=[];
@@ -4346,7 +4355,7 @@ let editOn=false;
 /* 그날 구간들의 실제 도로 소요시간을 받아 캐시를 채운다.
    받아오는 동안에는 추정값으로 계산되고, 다 받으면 한 번 다시 그린다. */
 async function warmRides(day){
-  const stops=D[day].stops;
+  const stops=stopsOf(day);
   let 바뀜=false;
   for(let i=0;i<stops.length-1;i++){
     const A=rideLL(stops[i],SPOT), B=rideLL(stops[i+1],SPOT);
@@ -4393,7 +4402,7 @@ function editCode(){
   const e=editGet(), 줄=[];
   Object.keys(e).sort(function(a,b){return a-b;}).forEach(function(day){
     const p=dayPlan(+day);
-    D[+day].stops.forEach(function(s,i){
+    stopsOf(+day).forEach(function(s,i){
       const c=(e[day]&&e[day][i])||{};
       if(p.arrive[i]===s.t&&c.stay===undefined&&!c.fix) return;
       const 조각=["t:'"+p.arrive[i]+"'"];
