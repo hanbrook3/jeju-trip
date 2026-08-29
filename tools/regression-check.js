@@ -12,18 +12,21 @@
      핀클릭.간격 8       핀을 누르면 카드 상단이 지도 바로 아래 8px 에 온다
      배율 {미술관 14, 일출봉 13, 숲길 12, 맛집 14, 일정_일출봉 13}
                          장소 크기에 맞춘 배율. 넷이 다 같아지면 통일로 되돌아간 것이고,
-                         일정_일출봉 이 일출봉과 다르면 탭 사이가 어긋난 것이다
+                         일정_일출봉 이 일출봉과 다르면 탭 사이가 어긋난 것이다.
+                         성산일출봉은 3일차(D[2])다 — 2·3일차를 맞바꾼 뒤 옮겨졌다
      탭통일 {패널 true, 안움직임 true, 선택표시 1}  여행지·맛집 카드도 일정 탭처럼 반응하는가
      점클릭 {일치 true, 간격 8}   지도 점을 누르면 그 카드가 열리고 지도 바로 아래로 온다
      지도통합 {거친탭 "trip,spot,food", 한곳수정이_세탭에 true}
      핀참조 {일정 5, 여행지 0}     탭을 바꾸면 번호 핀 참조가 비워져야 한다
-     점갈래_일정   {여행지 48, 명소 35, 맛집 51, 범례 4항목}
-     점갈래_여행지 {여행지 48, 명소 35, 맛집 0,  범례 2항목}
+     점갈래_일정   {여행지 49, 명소 35, 맛집 51, 범례 4항목}
+     점갈래_여행지 {여행지 49, 명소 35, 맛집 0,  범례 2항목}
      점갈래_맛집   {여행지 0,  명소 0,  맛집 51, 범례 2항목}
      길찾기 0            카카오맵 길찾기 버튼은 없앴다 — 다시 생기면 0 이 아니다
-     섬전체 {줌 9, 다보임 true}
+     섬전체 {줌 9, 다보임 true}   1일차 기준이다. 3일차는 동부만 도는 날이라
+                         줌 10 · 다보임 false 가 정상이다
      전체보기 667 / 닫기 213±1
-     범례 {높이 29±1, 한줄 true}   버튼이 아래로 밀리면 높이가 50 근처가 된다
+     범례 {높이 71±2, 한줄 false}  지도 조작 단추를 44px(터치 권장 크기)로 키워
+                         범례와 한 줄에 안 들어간다. 29 로 돌아가면 단추가 다시 작아진 것이다
      개략도 {path 58(z9) / 77(z12), 오류 0}
      오류 []
 
@@ -84,9 +87,9 @@
   document.querySelector('#foodcards details summary').click(); await w(1100);
   o.배율.맛집 = map.getZoom();
   document.querySelector('.mtab[data-m="trip"]').click(); await w(1600);
-  document.querySelectorAll('#daytabs .dtab')[1].click(); await w(1200);
+  document.querySelectorAll('#daytabs .dtab')[2].click(); await w(1500);
   const 일출봉카드 = [...document.querySelectorAll('#tl details.stop[data-lat]')]
-    .find(el => (D[1].stops.filter(x => x.ll)[+el.dataset.k] || {}).n === '성산일출봉');
+    .find(el => (D[2].stops.filter(x => x.ll)[+el.dataset.k] || {}).n === '성산일출봉');
   if (일출봉카드) { 일출봉카드.querySelector('summary').click(); await w(1000); }
   o.배율.일정_일출봉 = map.getZoom();
 
@@ -157,8 +160,9 @@
   document.querySelector('.mtab[data-m="food"]').click(); await w(1800);
   o.점갈래_맛집 = { ...점세기(), 범례: 범례항목() };
 
-  /* 4) 지도 조작 버튼 세 개 */
+  /* 4) 지도 조작 버튼 세 개 — 섬전체 기대값은 1일차 기준이다 */
   document.querySelector('.mtab[data-m="trip"]').click(); await w(1200);
+  document.querySelectorAll('#daytabs .dtab')[0].click(); await w(1000);
   document.getElementById('mapfit').click(); await w(800);
   o.섬전체 = { 줌: map.getZoom(), 다보임: (() => { const b = map.getBounds();
     return b.contains([33.1941, 126.1609]) && b.contains([33.5661, 126.9462]); })() };
