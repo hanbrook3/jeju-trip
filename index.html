@@ -893,6 +893,34 @@ body.editing #tl .chev{visibility:hidden}
 .srow .sc{font-size:11px;color:var(--faint);flex:0 0 auto}
 .srow .sa{font-size:11px;color:var(--faint);margin-left:auto;text-align:right}
 .smsg{font-size:12.5px;color:var(--faint);padding:6px 2px;margin:0}
+/* 넣기 칸 — 대화창을 쓰지 않고 결과 자리에 연다 */
+.saddbox{
+  border:1px solid var(--sea);border-radius:var(--r);background:var(--card);
+  padding:11px 12px;display:flex;flex-direction:column;gap:7px
+}
+.saddbox .sat{margin:0;font-size:13px;font-weight:600;color:var(--ink)}
+.saddbox input{
+  font-family:inherit;font-size:13px;padding:8px 10px;
+  border:1px solid var(--line);border-radius:var(--r);background:#fff;color:var(--ink)
+}
+.saddbox .sabtn{display:flex;gap:6px}
+.saddbox .sabtn button{
+  appearance:none;cursor:pointer;font-family:inherit;font-size:13px;
+  padding:8px 15px;border-radius:var(--r);border:1px solid var(--sea);
+  background:var(--sea);color:#fff
+}
+.saddbox .sabtn button#sano{background:#fff;color:var(--ink2);border-color:var(--line)}
+.saddbox .sabtn button[disabled]{opacity:.6;cursor:default}
+.saddbox .samsg{margin:0;font-size:12px;color:#B4472E}
+.saddbox .samsg[hidden]{display:none}
+/* 가족이 넣은 곳은 배포판 목록과 한눈에 구분되게 왼쪽에 띠를 둔다 */
+.fcard.newone{border-left:3px solid var(--sea)}
+.fnew{
+  margin-left:5px;font-size:10px;font-weight:600;letter-spacing:-.02em;
+  color:var(--sea);background:var(--seasoft);
+  border-radius:4px;padding:1px 5px;white-space:nowrap
+}
+.fdel.ask{color:#B4472E;border-color:#E0B4A6}
 .sadd{
   appearance:none;cursor:pointer;font-family:inherit;font-size:15px;line-height:1;
   padding:4px 10px;margin-left:6px;flex:0 0 auto;
@@ -902,9 +930,10 @@ body.editing #tl .chev{visibility:hidden}
 .fwho{margin-left:5px;font-size:10.5px;color:var(--faint);white-space:nowrap}
 /* 카드에서 빼는 손잡이. 넣은 곳에만 붙고 배포판 목록에는 붙지 않는다. */
 .fdel{
-  appearance:none;cursor:pointer;font-family:inherit;font-size:15px;line-height:1;
-  padding:2px 9px;margin-right:4px;flex:0 0 auto;
+  appearance:none;cursor:pointer;font-family:inherit;font-size:13px;line-height:1;
+  padding:2px 8px;margin-left:6px;flex:0 0 auto;vertical-align:middle;
   border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--faint);
+  white-space:nowrap;
 }
 .mapinfo .mi-kind{
   display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.02em;
@@ -2273,8 +2302,7 @@ const AREAS=[
  {n:'화순곶자왈',j:'안덕면 화순리 2045 · 임야',p:[[126.332894,33.264565],[126.332989,33.264516],[126.332914,33.26451],[126.332647,33.26439],[126.332277,33.264195],[126.331919,33.263984],[126.331741,33.263874],[126.331584,33.263748],[126.331391,33.263651],[126.331239,33.263517],[126.331121,33.263358],[126.330996,33.263207],[126.330865,33.263059],[126.33074,33.26291],[126.330605,33.262769],[126.330384,33.262459],[126.330246,33.26232],[126.329935,33.261828],[126.329861,33.261653],[126.329765,33.261482],[126.329692,33.261304],[126.329682,33.261236],[126.329436,33.261025],[126.329291,33.260785],[126.329291,33.260807],[126.328928,33.260805],[126.328735,33.260803],[126.328734,33.260876],[126.328729,33.260877],[126.328712,33.260878],[126.328692,33.260878],[126.328651,33.260877],[126.328607,33.260876],[126.328606,33.260824],[126.328548,33.260825],[126.328499,33.260821],[126.328404,33.260936],[126.328338,33.261026],[126.328277,33.261075],[126.328218,33.261128],[126.328085,33.261253],[126.328056,33.261277],[126.327999,33.261803],[126.328741,33.262769],[126.328827,33.263262],[126.328073,33.263331],[126.332356,33.269854],[126.332557,33.26975],[126.332562,33.269024],[126.332568,33.268625],[126.333071,33.266365],[126.333393,33.26495],[126.333365,33.264895],[126.333398,33.264753],[126.3334,33.264722],[126.333386,33.264692],[126.333228,33.264639],[126.333069,33.264578],[126.332989,33.264516],[126.333073,33.264624],[126.332969,33.264677],[126.332894,33.264565]]},
  {n:'군산오름',j:'서귀포시 상예동 산9 · 임야',p:[[126.370652,33.254971],[126.371402,33.254266],[126.371233,33.254097],[126.370946,33.253748],[126.371339,33.253555],[126.371889,33.253359],[126.372506,33.253392],[126.37279,33.253375],[126.372937,33.252978],[126.373146,33.253039],[126.373201,33.253187],[126.373329,33.2532],[126.373317,33.252671],[126.373096,33.252793],[126.372838,33.252521],[126.372582,33.25225],[126.372258,33.25182],[126.371969,33.25143],[126.371881,33.251346],[126.371722,33.25122],[126.371313,33.252115],[126.371109,33.252573],[126.370897,33.253048],[126.369929,33.25326],[126.369896,33.253534],[126.369817,33.253862],[126.369586,33.254178],[126.369659,33.25421],[126.369984,33.254348],[126.370652,33.254971]]},
  {n:'김창열미술관',j:'한림읍 월림리 115-23 · 임야',p:[[126.2689,33.338929],[126.26882,33.338782],[126.268663,33.33884],[126.268293,33.33898],[126.268422,33.339227],[126.268472,33.339314],[126.268716,33.339552],[126.269268,33.338923],[126.269208,33.338814],[126.2689,33.338929]]},
- {n:'제주현대미술관',j:'한림읍 월림리 115-72 · 대지',p:[[126.270744,33.339472],[126.270137,33.339027],[126.270047,33.339281],[126.270152,33.339335],[126.269906,33.33969],[126.270256,33.339945],[126.270416,33.339766],[126.270459,33.339793],[126.270744,33.339472]]},
- {n:'제주현대미술관',j:'한림읍 월림리 115-73 · 대지',p:[[126.270256,33.339945],[126.270329,33.339998],[126.270489,33.340118],[126.270806,33.33976],[126.270646,33.339643],[126.270776,33.339496],[126.270744,33.339472],[126.270459,33.339793],[126.270416,33.339766],[126.270256,33.339945]]}
+ {n:'제주현대미술관',j:'한경면 저지리 2114-63 · 대지',p:[[126.26509,33.339869],[126.265209,33.340137],[126.265376,33.340393],[126.265415,33.340436],[126.265481,33.340445],[126.265576,33.340433],[126.265838,33.340284],[126.265957,33.340177],[126.266073,33.340033],[126.266116,33.339913],[126.266122,33.339786],[126.265924,33.339356],[126.265096,33.339629],[126.26509,33.339869]]}
 ];
 function drawAreas(){
   if(!map||!areaLyr) return;
@@ -3743,12 +3771,11 @@ function renderFoodCards(){
           `<li><span>${m[0]}</span><span class="fprice${m[1]?'':' tbd'}">${m[1]||'미확인'}</span></li>`).join('')}</ul>`
       : `<ul class="fmenu"><li><span style="color:var(--faint)">메뉴·가격 미등록</span></li></ul>`;
     const sub=[f.main,foodAxis==='band'?f.zone:priceBand(f)].filter(Boolean).join(' · ');
-    return `<details class="fcard${f.pick?' pick':''}" data-fi="${idx}">
+    return `<details class="fcard${f.pick?' pick':''}${f.기록?' newone':''}" data-fi="${idx}">
       <summary class="fhead2">
         <span class="ftit">${f.pick?'<span class="fpick">★</span>':''}<b>${f.n}</b>
-          <span class="fzone">${f.kind==='카페'?'카페 · ':''}${f.zone}</span>${f.rate?`<span class="frate">${f.rate}</span>`:''}${f.누가?`<span class="fwho">${f.누가}</span>`:''}</span>
+          <span class="fzone">${f.kind==='카페'?'카페 · ':''}${f.zone}</span>${f.rate?`<span class="frate">${f.rate}</span>`:''}${f.기록?`<span class="fnew">새로 넣음</span>`:''}${f.넣음?`<button type="button" class="fdel" data-del="${f.n}" aria-label="목록에서 빼기">−</button>`:''}${f.누가?`<span class="fwho">${f.누가}</span>`:''}</span>
         <span class="fsub">${sub}</span>
-        ${f.넣음?`<button type="button" class="fdel" data-del="${f.n}" aria-label="목록에서 빼기">−</button>`:''}
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </summary>
       <div class="fbody2">
@@ -3806,11 +3833,10 @@ function renderSpotCards(){
   box.innerHTML=list.map(s=>{
     const i=SPOT.indexOf(s);
     const sub=[spotAxis==='zone'?s.theme:s.zone,s.open].filter(Boolean).join(' · ');
-    return `<details class="fcard spotcard" data-si="${i}">
+    return `<details class="fcard spotcard${s.기록?' newone':''}" data-si="${i}">
       <summary class="fhead2">
-        <span class="ftit"><b>${s.n}</b><span class="fzone">${spotAxis==='zone'?s.theme:s.zone}</span>${s.누가?`<span class="fwho">${s.누가}</span>`:''}</span>
+        <span class="ftit"><b>${s.n}</b><span class="fzone">${spotAxis==='zone'?s.theme:s.zone}</span>${s.기록?`<span class="fnew">새로 넣음</span>`:''}${s.넣음?`<button type="button" class="fdel" data-del="${s.n}" aria-label="목록에서 빼기">−</button>`:''}${s.누가?`<span class="fwho">${s.누가}</span>`:''}</span>
         <span class="fsub">${apText(s.open||'')}</span>
-        ${s.넣음?`<button type="button" class="fdel" data-del="${s.n}" aria-label="목록에서 빼기">−</button>`:''}
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </summary>
       <div class="fbody2">${spotBody(s)}</div>
@@ -4081,14 +4107,14 @@ async function sharePost(act,kind,값){
   }catch(e){ return {error:'인터넷이 없어 지금은 바꿀 수 없습니다'}; }
 }
 /* 넣은 사람 이름. 로그인이 아니라 카드에 보여 주는 표시용이다. */
-function myName(){
+/* 넣은 사람 이름. 물어보지 않고 저장된 것만 읽는다 —
+   카톡 인앱 브라우저가 prompt 를 막으면 예외가 나서 넣기 자체가 죽는다. */
+function myName(v){
   try{
-    let n=localStorage.getItem('jeju.who')||'';
-    if(!n){
-      n=((prompt('이름을 알려 주세요 — 누가 넣었는지 목록에 표시됩니다','')||'')).trim().slice(0,20);
-      if(n) localStorage.setItem('jeju.who',n);
-    }
-    return n;
+    if(v===undefined) return localStorage.getItem('jeju.who')||'';
+    const s=String(v).trim().slice(0,20);
+    if(s) localStorage.setItem('jeju.who',s);
+    return s;
   }catch(e){ return ''; }
 }
 /* 카카오 주소에서 우리가 쓰는 구역 이름을 뽑는다.
@@ -4124,22 +4150,65 @@ function toFood(d,메모){
     menu:[], note:메모||'', rate:'', hours:'',
     kakao:d.place_url||'' };
 }
-async function addPlace(i){
+/* + 를 누르면 그 줄 자리에 넣기 칸을 연다. 대화창을 쓰지 않는다. */
+function addPlace(i){
   const d=찾은곳[i]; if(!d) return;
   const 맛집=(curMode==='food');
   if((맛집?FOOD:SPOT).some(function(x){ return x.n===d.place_name; })) return;
-  const 메모=((prompt('한 줄 메모 — '+d.place_name+'\n(없으면 비워 두고 확인)','')||'')).trim().slice(0,200);
+  const 칸=document.getElementById('sresult');
+  if(!칸) return;
+  const 이름있음=!!myName();
+  칸.innerHTML='<div class="saddbox" data-si="'+i+'">'
+    +'<p class="sat">'+sEsc(d.place_name)+'</p>'
+    +(이름있음?'':'<input type="text" id="sawho" placeholder="이름 (처음 한 번만)" maxlength="20">')
+    +'<input type="text" id="samemo" placeholder="한 줄 메모 — 없어도 됩니다" maxlength="200">'
+    +'<div class="sabtn"><button type="button" id="saok">넣기</button>'
+    +'<button type="button" id="sano">그만</button></div>'
+    +'<p class="samsg" id="samsg" hidden></p></div>';
+  const 메모칸=document.getElementById('samemo');
+  if(메모칸) 메모칸.focus();
+}
+/* 넣기 칸의 확인. 여기서만 서버로 보낸다. */
+async function addConfirm(){
+  const box=document.querySelector('.saddbox');
+  if(!box) return;
+  const d=찾은곳[+box.getAttribute('data-si')];
+  if(!d) return;
+  const 이름칸=document.getElementById('sawho');
+  if(이름칸&&이름칸.value.trim()) myName(이름칸.value);
+  const 메모=(document.getElementById('samemo').value||'').trim().slice(0,200);
+  const 맛집=(curMode==='food');
+  const ok=document.getElementById('saok');
+  const msg=document.getElementById('samsg');
+  if(ok){ ok.disabled=true; ok.textContent='넣는 중…'; }
   const r=await sharePost('add',맛집?'food':'spot',맛집?toFood(d,메모):toSpot(d,메모));
-  if(r.error){ alert(r.error); return; }
+  if(r.error){
+    if(ok){ ok.disabled=false; ok.textContent='넣기'; }
+    if(msg){ msg.hidden=false; msg.textContent=r.error; }
+    return;
+  }
   doSearch();
 }
-async function removePlace(이름){
+/* 빼기. 대화창 대신 한 번 더 누르게 한다 — 실수로 지우는 것만 막으면 된다. */
+let 뺄준비=null;
+async function removePlace(이름, btn){
   const 맛집=(curMode==='food');
   const 것=(맛집?FOOD:SPOT).find(function(x){ return x.n===이름; });
   if(!것||!것.기록) return;                 /* 배포판 목록은 여기서 지울 수 없다 */
-  if(!confirm('"'+이름+'" 을 목록에서 뺄까요?\n가족 모두에게서 빠집니다.')) return;
+  if(뺄준비!==이름){
+    뺄준비=이름;
+    if(btn){ btn.textContent='뺄까요?'; btn.classList.add('ask'); }
+    setTimeout(function(){
+      if(뺄준비!==이름) return;
+      뺄준비=null;
+      if(btn){ btn.textContent='−'; btn.classList.remove('ask'); }
+    },4000);
+    return;
+  }
+  뺄준비=null;
+  if(btn){ btn.textContent='…'; btn.disabled=true; }
   const r=await sharePost('del',맛집?'food':'spot',이름);
-  if(r.error) alert(r.error);
+  if(r.error&&btn){ btn.textContent='−'; btn.classList.remove('ask'); btn.disabled=false; }
 }
 /* 카드 안의 빼기 손잡이. summary 안에 있으므로 카드가 열리는 것과
    카드 클릭으로 지도가 움직이는 것을 둘 다 막아야 한다. */
@@ -4148,7 +4217,7 @@ document.addEventListener('click',function(e){
   if(!btn) return;
   e.preventDefault();
   e.stopPropagation();
-  removePlace(btn.getAttribute('data-del'));
+  removePlace(btn.getAttribute('data-del'), btn);
 },true);
 shareCacheLoad(); shareRedraw(); shareFetch();
 
@@ -4287,6 +4356,8 @@ function searchBind(){
   if(r) r.addEventListener('click',function(e){
     const 넣기=e.target.closest('.sadd');
     if(넣기){ e.preventDefault(); e.stopPropagation(); addPlace(+넣기.getAttribute('data-add')); return; }
+    if(e.target.closest('#saok')){ e.preventDefault(); e.stopPropagation(); addConfirm(); return; }
+    if(e.target.closest('#sano')){ e.preventDefault(); e.stopPropagation(); doSearch(); return; }
     const row=e.target.closest('.srow'); if(!row) return;
     pickFound(+row.dataset.si);
   });
