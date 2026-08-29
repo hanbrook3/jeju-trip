@@ -13,3 +13,7 @@ tools/mapdata/preview.png
 tools/jeju-api/places.json
 # 브라우저 도구가 남기는 기록
 .playwright-mcp/
+
+# 카카오 REST 키 — 도메인 제한이 없어 소스에 박히면 남이 그대로 가져다 쓴다.
+# 경로를 다시 구울 때만 쓰고 저장소에는 절대 올리지 않는다.
+tools/.kakao-key
