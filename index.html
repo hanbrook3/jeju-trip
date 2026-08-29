@@ -1338,14 +1338,26 @@ summary.fhead .chev{flex:0 0 18px}
 #map.zoomed .poi span{display:block}
 
 .pin{background:none;border:none}
+/* 동선 위의 진행 방향 화살표. 흰 그림자를 둘러 어떤 배경에서도 읽힌다 */
+.rarrow{background:none;border:none;pointer-events:none}
+.rarrow svg{display:block;width:16px;height:16px;
+  filter:drop-shadow(0 .5px 1px rgba(0,0,0,.5)) drop-shadow(0 0 1px rgba(0,0,0,.35))}
+/* 물방울 핀 — 원 하나만 찍으면 어디를 가리키는지 알 수 없어 지도에 묻힌다.
+   원에 삼각형을 덧대는 방식은 이음매가 드러나 어설프다. **한 붓으로 그린 SVG 경로**로
+   위는 둥글고 아래는 뾰족하게 이어지게 하고, 그 뾰족한 끝이 실제 좌표를 가리킨다
+   (iconAnchor 를 끝점에 맞춰 두었다). */
+.pin .pinwrap{position:relative;display:block;width:30px;height:40px;
+  transition:transform .18s ease}
+.pin .pinsvg{display:block;width:30px;height:40px;
+  filter:drop-shadow(0 1.5px 2.5px rgba(0,0,0,.35))}
+.pin .pinsvg path{fill:var(--sea);stroke:#fff;stroke-width:2.6;stroke-linejoin:round}
+.pin.meal .pinsvg path{fill:var(--amber)}
+.pin.ship .pinsvg path{fill:var(--rose)}
 .pin b{
-  display:flex;align-items:center;justify-content:center;width:26px;height:26px;
-  border-radius:50%;background:var(--sea);color:#fff;border:2.5px solid #fff;
-  font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:12px;font-weight:600;
-  box-shadow:0 1px 5px rgba(0,0,0,.3);
+  position:absolute;left:0;top:0;width:30px;height:29px;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:12.5px;font-weight:700;
 }
-.pin.meal b{background:var(--amber)}
-.pin.ship b{background:var(--rose)}
 /* 일정 목록의 번호 배지 — 지도 핀과 같은 번호·같은 색 */
 .pnum{
   display:inline-flex;align-items:center;justify-content:center;
@@ -1357,13 +1369,13 @@ summary.fhead .chev{flex:0 0 18px}
 .stop.meal .pnum{background:var(--amber)}
 .stop.ship .pnum{background:var(--rose)}
 .pin span{
-  position:absolute;left:32px;top:4px;white-space:nowrap;font-size:12px;font-weight:600;
+  position:absolute;left:34px;top:7px;white-space:nowrap;font-size:12px;font-weight:600;
   color:#2A3942;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;
 }
-.pin.flip span{left:auto;right:32px}
-.pin.on b{transform:scale(1.28);box-shadow:0 0 0 5px rgba(44,140,160,.30),0 2px 8px rgba(0,0,0,.35)}
+.pin.flip span{left:auto;right:34px}
+.pin.on .pinwrap{transform:scale(1.26);transform-origin:50% 100%}
+.pin.on .pinsvg{filter:drop-shadow(0 0 5px rgba(44,140,160,.6)) drop-shadow(0 2px 4px rgba(0,0,0,.4))}
 .pin.on span{font-size:13px;color:var(--sea)}
-.pin b{transition:transform .18s ease,box-shadow .18s ease}
 
 .mapnote{padding:10px 16px;font-size:11.5px;color:var(--muted);line-height:1.55;border-top:1px solid var(--linesoft)}
 
@@ -1685,8 +1697,10 @@ summary.fhead .chev{flex:0 0 18px}
    타일이 정상적으로 오면 그때 벡터를 걷고 실제 지도로 바꾼다.       */
 /* 구간 색 — 시원한 색에서 따뜻한 색으로. 하루 안의 이동 순서를 말한다.
    날짜별 색이던 것을 여기로 옮겼다 — 한 화면에는 그날 하루만 그려지므로
-   날짜별로 색이 달라 봐야 비교 대상이 없어 아무것도 말해 주지 않는다. */
-const LEGCOLOR=['#15616D','#2C8CA0','#3F7D58','#6E8C3A','#A9700F','#C2691F','#B5583C'];
+   날짜별로 색이 달라 봐야 비교 대상이 없어 아무것도 말해 주지 않는다.
+   **채도를 낮추지 말 것.** 올리브·황토처럼 탁한 색을 쓰면 지도 배경(베이지·연두)에
+   섞여 선이 흐릿해진다. 지도 위에서 또렷하게 읽히려면 선명한 색이어야 한다. */
+const LEGCOLOR=['#1667C7','#0093A8','#2E9E4F','#C8930C','#E8710A','#CC2E24'];
 
 const PLACES=[
  ['제주시',33.5030,126.5219,'city'],['서귀포시',33.2600,126.5601,'city'],
@@ -2346,7 +2360,7 @@ function initMap(){
     map.on('move resize',syncKakao);
     map.on('resize',function(){ try{ if(kmap) kmap.relayout(); }catch(e){} });
     bindBadge();
-    map.on('moveend',declutter);
+    map.on('moveend',function(){ declutter(); redrawRoute(); });
     const bb=document.getElementById('build');
     if(bb) bb.addEventListener('click',retryTiles);
     mapReady=true;
@@ -2439,44 +2453,78 @@ function segsOf(day,pts){
    색선은 18px 선에 5px 틈인 점선이라 눈에는 실선과 거의 같은데, 구간마다 틈 위치를
    어긋나게 두어 두 구간이 포개져도 서로의 틈으로 아래 색이 비친다.
    겹치는 곳의 대부분이 정확히 같은 좌표라 이렇게 하지 않으면 한 색만 보인다. */
-/* 차를 대고 걸어 들어가는 곳 — 주차장과 실제 자리가 이만큼 떨어진 정차지에는
-   주차장에서 그곳까지 도보선을 따로 긋는다. 200m 미만은 주차장에서 바로 보이는
-   거리라 선을 그려도 읽히지 않는다.
-   지금 걸리는 곳 — 글라스하우스 709m · 유민미술관 660m · 수월봉 299m ·
-   성산일출봉 215m · 군산오름 205m. */
+/* 차를 대고 걸어 들어가는 길.
+   **한 주차장을 여러 정차지가 함께 쓰면 하나의 사슬로 잇는다** — 차를 한 번 대고
+   그 순서대로 걸어 도는 것이 실제 동선이기 때문이다. 주차장에서 각 정차지로 따로
+   뻗는 방사형으로 그리면 저마다 차를 타고 가는 것처럼 읽힌다.
+   3일차 섭지코지가 그렇다 — 휘닉스 아일랜드 주차장 한 곳에 대고 유민미술관 ·
+   글라스하우스 · 섭지코지를 걸어서 돈다.
+   사슬 전체가 200m 를 넘어야 그린다. 그 미만은 주차장에서 바로 보이는 거리라
+   선을 그려도 점으로 뭉친다. 돌아오는 길은 긋지 않는다 — 겹쳐 그릴 뿐 새로 알려
+   주는 것이 없다. */
 const 도보최소=0.2;
 function walksOf(stops){
-  const out=[];
-  (stops||[]).forEach(function(s,k){
-    const 주차=rideLL(s,SPOT);
-    if(!주차||!s.ll) return;
-    const v=km(주차,s.ll);
-    if(v===null||v<도보최소) return;
-    /* 색은 그 정차지에서 이어지는 구간의 것을 쓴다 — 하루의 흐름을 끊지 않는다 */
-    out.push({co:[주차,s.ll],k:Math.max(0,Math.min(k,(stops.length-2)||0))});
-  });
+  const 목록=stops||[], out=[];
+  let i=0;
+  while(i<목록.length){
+    const 주차=rideLL(목록[i],SPOT);
+    if(!주차||!목록[i].ll){ i++; continue; }
+    /* 같은 주차장을 쓰는 연속된 정차지를 묶는다 */
+    let j=i;
+    while(j+1<목록.length){
+      const 다음=rideLL(목록[j+1],SPOT);
+      if(!다음||목록[j+1].ll===undefined) break;
+      const d=km(주차,다음);
+      if(d===null||d>0.005) break;
+      j++;
+    }
+    const 사슬=[주차];
+    for(let k=i;k<=j;k++) if(목록[k].ll) 사슬.push(목록[k].ll);
+    let 길이=0;
+    for(let k=0;k+1<사슬.length;k++){ const d=km(사슬[k],사슬[k+1]); if(d!==null) 길이+=d; }
+    if(사슬.length>1&&길이>=도보최소){
+      /* 색은 묶음의 첫 정차지에서 이어지는 구간의 것 — 하루의 흐름을 끊지 않는다 */
+      out.push({co:사슬,k:Math.max(0,Math.min(i,(목록.length-2)||0))});
+    }
+    i=j+1;
+  }
   return out;
 }
-/* 같은 길을 갔다가 오는 구간 쌍을 찾는다. 60m 안에 든 점이 셋 이상이면 겹친 것으로 본다.
+/* 같은 길을 갔다가 오는 구간 쌍을 찾아 어느 쪽으로 비킬지 정한다.
+   60m 안에 든 점이 셋 이상이면 겹친 것으로 본다.
    구간 배열은 segsOf 가 캐시해 돌려주므로 참조로 기억해 두면 배율이 바뀌어도 다시 세지 않는다. */
 const 겹침캐시=new WeakMap();
 function offsetOf(구간들){
   if(겹침캐시.has(구간들)) return 겹침캐시.get(구간들);
   const 밀기={};
+  const 방향=function(co,i){
+    const a=co[Math.max(0,i-1)], b=co[Math.min(co.length-1,i+1)];
+    return [b[0]-a[0], b[1]-a[1]];
+  };
   for(let a=0;a<구간들.length;a++){
     for(let b=a+1;b<구간들.length;b++){
       if(구간들[a].length<2||구간들[b].length<2) continue;
-      let 겹=0;
-      for(let i=0;i<구간들[a].length&&겹<3;i++){
+      let 겹=0, 내적=0;
+      for(let i=0;i<구간들[a].length;i++){
         for(let j=0;j<구간들[b].length;j++){
           const v=km(구간들[a][i],구간들[b][j]);
-          if(v!==null&&v<0.06){ 겹++; break; }
+          if(v!==null&&v<0.06){
+            겹++;
+            const p=방향(구간들[a],i), q=방향(구간들[b],j);
+            내적+=p[0]*q[0]+p[1]*q[1];
+            break;
+          }
         }
+        if(겹>=8) break;
       }
       if(겹<3) continue;
-      /* 앞 구간을 한쪽으로, 뒤 구간을 반대쪽으로. 이미 정해진 것은 그대로 둔다 */
+      /* **마주 오는 길이면 두 구간에 같은 부호를 준다.** 진행 방향이 반대면 법선도
+         반대라, 부호까지 반대로 주면 둘이 같은 쪽으로 밀려 그대로 겹친다.
+         같은 부호를 주면 차가 우측통행하듯 저마다 제 진행 방향의 오른쪽으로 비켜
+         왕복 차선처럼 갈린다. 같은 방향으로 겹칠 때만 부호를 달리한다. */
+      const 마주=내적<0;
       if(밀기[a]===undefined) 밀기[a]=1;
-      if(밀기[b]===undefined) 밀기[b]=-밀기[a];
+      if(밀기[b]===undefined) 밀기[b]=마주?밀기[a]:-밀기[a];
     }
   }
   겹침캐시.set(구간들,밀기);
@@ -2498,7 +2546,7 @@ function offsetSeg(co,px){
    갔다가 같은 길로 오는 구간은 나란히 띄워 둘 다 보이게 한다.
    흰 테두리를 전부 먼저 깔고 색선을 전부 나중에 얹는다 — 구간마다 테두리와 색을
    번갈아 그리면 뒤 구간의 흰 테두리가 앞 구간 색을 덮는다. */
-const 벌림=4;
+const 벌림=7;
 function paintRoute(구간들,도보들){
   if(!map||!routeLyr||!구간들||!구간들.length) return;
   const 색=legColors(구간들.length);
@@ -2506,19 +2554,62 @@ function paintRoute(구간들,도보들){
   const 밀기=offsetOf(구간들);
   const 그릴것=구간들.map(function(co,k){ return offsetSeg(co,(밀기[k]||0)*벌림); });
   그릴것.forEach(function(co){
-    if(co.length>1) L.polyline(co,{interactive:false,color:'#fff',weight:9,opacity:.9,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
+    if(co.length>1) L.polyline(co,{interactive:false,color:'#fff',weight:11.5,opacity:1,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
   });
   걷기.forEach(function(w){
-    L.polyline(w.co,{interactive:false,color:'#fff',weight:7,opacity:.9,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
+    L.polyline(w.co,{interactive:false,color:'#fff',weight:8,opacity:1,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
   });
   그릴것.forEach(function(co,k){
     if(co.length<2) return;
-    L.polyline(co,{interactive:false,color:색[k],weight:4,opacity:.95,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
+    L.polyline(co,{interactive:false,color:색[k],weight:7,opacity:1,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
   });
   걷기.forEach(function(w){
-    L.polyline(w.co,{interactive:false,color:색[w.k],weight:3.2,opacity:.95,lineCap:'butt',
+    L.polyline(w.co,{interactive:false,color:색[w.k],weight:3.6,opacity:1,lineCap:'butt',
       dashArray:'2 3'}).addTo(routeLyr);
   });
+  그릴것.forEach(function(co,k){ drawArrows(co,색[k]); });
+}
+/* 선 위에 진행 방향 화살표를 찍는다. 나란히 놓인 두 선이 갈 때와 올 때 중
+   어느 쪽인지는 색만으로는 알 수 없어 방향을 함께 보여 준다.
+   **화면 길이를 재서 간격을 정한다** — 좌표 길이로 하면 확대할 때 화살표가 몰린다.
+   짧은 구간은 건너뛰고, 긴 구간도 여섯 개를 넘기지 않는다(선이 화살표에 묻힌다). */
+function drawArrows(co,색){
+  if(!map||!routeLyr||!co||co.length<2) return;
+  const P=co.map(function(c){ return map.latLngToLayerPoint(L.latLng(c[0],c[1])); });
+  const 누적=[0];
+  for(let i=1;i<P.length;i++) 누적.push(누적[i-1]+P[i].distanceTo(P[i-1]));
+  const 총=누적[누적.length-1];
+  if(총<42) return;
+  /* **화면에 보이는 자리에만 찍는다.** 구간 전체에 균등 배치하면 확대했을 때
+     화살표가 전부 화면 밖으로 나가 하나도 안 보인다. */
+  const 크기=map.getSize(), 여백=30;
+  /* 간격은 화면 픽셀로 고정한다. 구간 길이에 비례시키면 확대했을 때 간격이 화면보다
+     넓어져 화살표가 하나도 안 보인다. 화면 밖은 건너뛰므로 개수는 늘지 않는다. */
+  const 간격=115;
+  let 찍음=0, i=1;
+  for(let 목표=간격/2; 목표<총&&찍음<24; 목표+=간격){
+    while(i<누적.length-1&&누적[i]<목표) i++;
+    const a=P[i-1], b=P[i];
+    const 몫=(누적[i]-누적[i-1])||1;
+    const s=(목표-누적[i-1])/몫;
+    const p=L.point(a.x+(b.x-a.x)*s, a.y+(b.y-a.y)*s);
+    const c=map.layerPointToContainerPoint(p);
+    if(c.x<-여백||c.y<-여백||c.x>크기.x+여백||c.y>크기.y+여백) continue;
+    const 각=Math.round(Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI);
+    /* zIndexOffset 을 음수로 주면 안 된다 — Leaflet 은 화면 y 값에 이걸 더해 z-index 를
+       만드는데, 위쪽에 그려지는 화살표는 y 가 작아 최종값이 음수가 되고 그러면 지도 뒤로
+       숨어 아예 보이지 않는다(빨간 테두리를 씌워도 안 보였다). */
+    L.marker(map.layerPointToLatLng(p),{interactive:false,keyboard:false,
+      /* **화살표는 선 위에 흰색으로 얹는다.** 선과 같은 색으로 그리면 선에 묻혀
+         방향이 읽히지 않는다. 흰색이면 어떤 구간 색 위에서도 또렷하다. */
+      /* 축에 꽉 찬 화살촉을 붙인다. 선을 그린 것보다 또렷해 작은 크기에서도 읽힌다. */
+      icon:L.divIcon({className:'rarrow',iconSize:[16,16],iconAnchor:[8,8],
+        html:'<svg viewBox="0 0 16 16" style="transform:rotate('+각+'deg)">'
+          +'<path d="M3.2 8h6.2" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/>'
+          +'<path d="M8.4 4.4L13 8l-4.6 3.6z" fill="#fff"/></svg>'
+      })}).addTo(routeLyr);
+    찍음++;
+  }
 }
 /* 편집 내용은 바뀐 값만 저장한다. 정차지 전체를 저장하면
    배포판 일정이 바뀌었을 때 옛 값이 통째로 되살아난다. */
@@ -2826,8 +2917,11 @@ function drawDayPins(stops){
     const cls=s.ty==='meal'?'meal':s.ty==='ship'?'ship':'spot';
     const fl=s.ll[1]>126.72?' flip':'';
     const mk=L.marker(s.ll,{interactive:true,keyboard:false,
-      icon:L.divIcon({className:'pin '+cls+fl,iconSize:[26,26],iconAnchor:[13,13],
-        html:'<b>'+(n+1)+'</b><span>'+s.n+'</span>'})}).addTo(pinLyr);
+      /* 물방울의 뾰족한 끝이 좌표를 가리키도록 아래쪽 끝을 앵커로 잡는다 */
+      icon:L.divIcon({className:'pin '+cls+fl,iconSize:[30,40],iconAnchor:[15,40],
+        html:'<i class="pinwrap"><svg class="pinsvg" viewBox="0 0 30 40" aria-hidden="true">'
+          +'<path d="M15 38.6C15 38.6 27.7 24.3 27.7 14.6A12.7 12.7 0 1 0 2.3 14.6C2.3 24.3 15 38.6 15 38.6Z"/>'
+          +'</svg><b>'+(n+1)+'</b></i><span>'+s.n+'</span>'})}).addTo(pinLyr);
     mk.on('click',function(){
       const d=tl.querySelector('details.stop[data-k="'+n+'"]');
       if(!d) return;
