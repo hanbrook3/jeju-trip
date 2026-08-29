@@ -3460,21 +3460,25 @@ function fillStay(stops,ride){
    opt.start  하루 첫 도착 시각 'HH:MM'
    opt.stay[] 각 정차지에 머무는 분
    opt.ride[] i → i+1 이동시간(분). null 이면 0 으로 본다
-   opt.pin{}  {순번: 'HH:MM'} 사용자가 못 박은 시각. 거기서부터 다시 쌓는다 */
+   opt.pin{}  {순번: 'HH:MM'} 사용자가 못 박은 시각. 거기서부터 다시 쌓는다
+   못 박기 전의 도착도 natural 로 함께 낸다 — 못 박으면 arrive 가 못 박은 값과
+   같아져, 그 시각에 닿을 수 있는지 견줄 것이 남지 않기 때문이다. */
 function recalc(stops,opt){
   const stay=opt.stay||[], ride=opt.ride||[], pin=opt.pin||{};
-  const arrive=[], depart=[];
+  const arrive=[], depart=[], 자연=[];
   let 시각=hm2min(opt.start);
   if(시각===null) 시각=0;
   for(let i=0;i<stops.length;i++){
     if(i>0) 시각=depart[i-1]+(ride[i-1]||0);
+    자연[i]=시각;
     const 못박음=hm2min(pin[i]);
     if(못박음!==null) 시각=못박음;
     arrive[i]=시각;
     depart[i]=시각+(stay[i]||0);
   }
   return { arrive:arrive.map(min2hm), depart:depart.map(min2hm),
-           arriveMin:arrive, departMin:depart };
+           arriveMin:arrive, departMin:depart,
+           natural:자연.map(min2hm), naturalMin:자연 };
 }
 /* 오전/오후 한국어 표기 — 경고 문구에 쓴다 */
 function hmKo(v){
@@ -3485,14 +3489,23 @@ function hmKo(v){
   return 라벨+' '+hh+'시'+(m?' '+m+'분':'');
 }
 /* 식사 시각이 알맞은 때인가.
-   어느 끼니인지는 배포판에 적힌 원래 시각으로 정하고 편집 중에 바뀌지 않는다 —
-   점심을 16시로 밀었을 때 "저녁이 이르다" 로 뒤집히면 안 되기 때문이다. */
+   어느 끼니인지는 정차지 이름에서 읽고, 이름에 끼니말이 없으면 배포판 시각에 가장
+   가까운 창으로 정한다. **편집한 시각으로 정하면 안 된다** — 점심을 16시로 밀었을 때
+   "저녁이 이르다" 로 뒤집힌다. **어느 창에도 안 든다고 판정에서 빼도 안 된다** —
+   그 정차지는 아무리 밀려도 영영 조용해진다.
+   창은 배포판 시각을 반드시 품도록 넓힌다 — 배포판에 적어 둔 때가 이 여행에서 그
+   끼니의 알맞은 때이고, 경고는 편집이 그보다 더 벗어나게 만들었을 때만 떠야 한다.
+   경계(11:00/15:00)와 창의 경계가 어긋나 09:30~11:00 은 늘 "아침이 늦다",
+   11:00~11:30 은 늘 "점심이 이르다" 가 되던 사각지대를 없앤다. */
 var MEAL_창={아침:[390,570],점심:[690,840],저녁:[1050,1200]};
-function mealWarn(원래,지금){
+function mealWarn(이름,원래,지금){
   const o=hm2min(원래), n=hm2min(지금);
   if(o===null||n===null) return null;
-  const 끼니 = o<660 ? '아침' : (o<900 ? '점심' : '저녁');
-  const [이른,늦은]=MEAL_창[끼니];
+  const 끼니들=Object.keys(MEAL_창);
+  function 벌어짐(k){ return Math.max(MEAL_창[k][0]-o, o-MEAL_창[k][1], 0); }
+  const 끼니=끼니들.find(function(k){ return 이름.indexOf(k)>=0; })
+         || 끼니들.reduce(function(a,b){ return 벌어짐(b)<벌어짐(a)?b:a; });
+  const 이른=Math.min(MEAL_창[끼니][0],o), 늦은=Math.max(MEAL_창[끼니][1],o);
   if(n<이른) return 끼니+'이 '+hmKo(지금)+'입니다. 너무 이릅니다.';
   if(n>늦은) return 끼니+'이 '+hmKo(지금)+'입니다. 너무 늦습니다.';
   return null;
@@ -3542,6 +3555,14 @@ function fixWarn(이름,못박은,계산된){
   const 지금=hmKo(계산된);
   return 이름+조사(이름,'이','가')+' '+지금+조사(지금,'으로','로')+' 계산됩니다. '+
          hmKo(못박은)+'까지 도착해야 합니다.';
+}
+/* 못 박은 시각이 앞 일정보다 이른가. 그대로 두면 목록에서 시간이 거꾸로 흐른다 */
+function backWarn(이름,못박은,자연){
+  const a=hm2min(못박은), b=hm2min(자연);
+  if(a===null||b===null||b<=a) return null;
+  const 적은=hmKo(못박은);
+  return 이름+조사(이름,'을','를')+' '+적은+조사(적은,'으로','로')+' 적었지만 앞 일정대로면 '+
+         hmKo(자연)+'입니다. 이 시각에는 닿을 수 없습니다.';
 }
 /* 배포판 일정의 지문. 저장해 둔 편집이 어느 일정에 붙은 것인지 가리는 데 쓴다.
    배포판이 바뀌었는데 옛 편집이 남아 있으면 엉뚱한 곳에 붙는다. */
@@ -4305,7 +4326,10 @@ function editRow(day,키,s,자리){
   return '<div class="erow" data-k="'+pickEsc(키)+'" data-at="'+자리+'">'
     +'<label class="enm">제목 <input type="text" class="en" value="'+pickEsc(s.n||'')+'" placeholder="정차지 이름" autocomplete="off"></label>'
     +(function(){
-       const 갈래=subParts(s.sub);
+       /* 장소를 바꾼 줄은 새 곳의 부제가 통째로 자동 값이라 칩으로만 보인다.
+          편집칸에 남겨 두면 저장할 때 자동 값 위에 또 얹혀 두 벌이 된다. */
+       const 자동=e.place?새곳부제(e.place.n):null;
+       const 갈래=자동?{사실:자동,메모:자동빼기(subParts(s.sub).메모,자동)}:subParts(s.sub);
        return '<label class="esb">설명 <span class="esbwrap">'
          +갈래.사실.map(function(x){
             /* 거리·시간·요금은 자동으로 나오는 값이라 손대지 못하게 둔다 */
@@ -4330,11 +4354,16 @@ function editRow(day,키,s,자리){
     +(function(){
        const r=(p.rides&&p.rides[자리]);
        if(r===null||r===undefined) return '';
-       const 다음=stopsOf(day)[자리+1]||{};
+       const 목록=stopsOf(day), 다음=목록[자리+1]||{};
        /* 구워 둔 실측이 있으면 도로 거리와 통행료를 그대로 보여 준다.
-          없으면 직선 거리로 물러선다 — 편집으로 장소를 옮기면 실측에 없는 조합이 된다. */
-       const 실측=rideInfo(rideLL(s,SPOT),rideLL(다음,SPOT));
-       const 거리=실측?실측[1]:km(s.ll,다음.ll);
+          없으면 직선 거리로 물러선다 — 편집으로 장소를 옮기면 실측에 없는 조합이 된다.
+          **재는 두 지점은 dayPlan 이 이동시간을 잰 것과 같아야 한다** — 좌표 없는 새
+          정차지는 앞뒤를 이어 재므로, 여기서도 앞쪽 좌표를 거슬러 찾지 않으면 '어림' 이
+          붙는다. */
+       let 앞=s;
+       for(let n=자리;n>=0;n--){ if(rideLL(목록[n],SPOT)){ 앞=목록[n]; break; } }
+       const 실측=rideInfo(rideLL(앞,SPOT),rideLL(다음,SPOT));
+       const 거리=실측?실측[1]:km(앞.ll,다음.ll);
        const 요금=(실측&&실측[2])?' · 통행료 '+실측[2].toLocaleString()+'원':'';
        return '<div class="eride">↓ 이동 '+r+'분'
          +(거리?' · '+(실측?거리:거리.toFixed(1))+'km':'')+요금
@@ -5084,10 +5113,13 @@ function stopsOf(day){
        장소를 바꾼 뒤 제목을 또 고칠 수 있으므로 이것이 마지막에 얹힌다. */
     if(e.name) s=Object.assign({}, s, { n:e.name });
     /* **거리·이동시간·통행료는 사람이 고치지 않는다.** 배포판 값을 그대로 두고 메모만
-       갈아 끼운다. 저장된 것에 사실이 섞여 들어와도 다시 떼어내므로 겹치지 않는다. */
+       갈아 끼운다. 저장된 것에 사실이 섞여 들어와도 다시 떼어내므로 겹치지 않는다.
+       **장소를 바꾼 자리는 바탕이 아니라 새 곳에서 뽑는다** — 바탕은 지워진 옛 곳이라
+       그 사실 조각을 쓰면 없어진 곳의 문구가 새 곳 자리에 되살아난다. */
     if(e.sub!==undefined){
-      const 사실=subParts(바탕.sub).사실, 메모=subParts(e.sub).메모;
-      s=Object.assign({}, s, { sub:사실.concat(메모?[메모]:[]).join(' · ') });
+      const 자동=e.place?새곳부제(e.place.n):subParts(바탕.sub).사실;
+      const 메모=자동빼기(subParts(e.sub).메모,자동);
+      s=Object.assign({}, s, { sub:자동.concat(메모?[메모]:[]).join(' · ') });
     }
     /* **_k 는 편집 키다.** 화면 순서(인덱스)로 편집을 찾으면 순서를 바꾼 순간 어긋난다. */
     return Object.assign({}, s, { _k:키 });
@@ -5101,6 +5133,21 @@ function placeInfo(이름){
   const f=FOOD.find(function(x){ return x.n===이름; });
   if(f){ const o={}; if(f.main) o.sub=f.main; if(f.note) o.note=f.note; return o; }
   return {};
+}
+/* 장소를 바꾼 자리에 자동으로 붙는 부제 조각. **새 곳의 부제는 통째로 자동 값이다** —
+   `숲·생태` 나 `순대백반` 은 subParts 의 규칙으로는 사실인지 알 수 없어 메모로 새는데,
+   메모는 사람이 적은 것으로 갈리므로 그대로 두면 새 곳의 설명이 사라진다.
+   목록에 없는 이름이면 빈 배열이다 — placeInfo 가 아무것도 주지 않는다. */
+function 새곳부제(이름){
+  return String(placeInfo(이름).sub||'').split(/\s+·\s+/).filter(Boolean);
+}
+/* **저장된 메모에서 자동 부제 조각을 떼어낸다** — 고치기 전 화면은 새 곳의 부제를
+   편집칸에 글자로 담고 있어서, 가족이 그 뒤에 메모만 덧붙여 저장해 둔 편집이
+   localStorage 에 남아 있다. 그대로 이으면 같은 조각이 두 벌로 나온다. */
+function 자동빼기(메모,자동){
+  return String(메모||'').split(/\s+·\s+/).filter(function(v){
+    return v&&자동.indexOf(v)<0;
+  }).join(' · ');
 }
 /* 장소 바꾸기 — 어느 줄이 열려 있고 무엇을 찾는 중인가. 편집 중에만 쓴다.
    여는 줄은 화면 자리가 아니라 **편집 키**로 기억한다 — 순서가 바뀌어도 따라가야 한다. */
@@ -5156,7 +5203,18 @@ function pickBox(day,키){
 function dayPlan(day){
   const stops=stopsOf(day), 배포=D[day].stops;
   const rides=[], 배포이동=[];
-  for(let i=0;i<stops.length-1;i++) rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
+  /* **좌표 없는 새 정차지는 건너뛰고 앞뒤를 잇는다** — 장소를 아직 고르지 않은 곳에서
+     사슬이 끊기면 그 사이 구워 둔 실측 주행시간이 통째로 사라진다.
+     배포판의 좌표 없는 정차지까지 함께 건너뛰면 안 된다 — 그쪽은 배포판 시각 차이가
+     이미 그 주행을 stay 로 흡수하고 있어 같은 주행을 두 번 세게 된다.
+     이어 붙인 시간은 좌표 있는 다음 정차지에 닿는 구간에 얹는다. */
+  for(let i=0;i<stops.length-1;i++) rides.push(null);
+  let 앞=-1;
+  for(let i=0;i<stops.length;i++){
+    if(stops[i]._k.charAt(0)==='+'&&!rideLL(stops[i],SPOT)) continue;
+    if(앞>=0) rides[i-1]=rideNow(rideLL(stops[앞],SPOT),rideLL(stops[i],SPOT));
+    앞=i;
+  }
   /* 배포판 이동은 배포판 길이대로 따로 센다 — 넣거나 빼면 두 목록의 길이가 달라진다 */
   for(let i=0;i<배포.length-1;i++) 배포이동.push(rideNow(rideLL(배포[i],SPOT),rideLL(배포[i+1],SPOT)));
   /* 머무는 시간은 배포판 일정에서 역산한다 — 지금 이동시간으로 역산하면
@@ -5173,13 +5231,21 @@ function dayPlan(day){
     const v=배포stay[+s._k];
     return v===undefined?60:v;
   });
+  /* **하루의 시작은 목록에 남아 있는 배포판 정차지 중 가장 앞선 것의 시각이다** —
+     화면 맨 위 정차지에서 읽으면 순서를 맞바꾸거나 새 정차지를 맨 위에 넣는 것만으로
+     하루가 통째로 옮겨지고, 배포[0] 을 그냥 쓰면 그 정차지를 뺐을 때 없어진 시각으로
+     하루가 앞당겨진다. */
+  const 남은배포=stops.map(function(s){ return s._k; })
+    .filter(function(k){ return k.charAt(0)!=='+'; })
+    .map(Number).sort(function(a,b){ return a-b; });
+  const 하루시작=남은배포.length?배포[남은배포[0]].t:stops[0].t;
   const pin={};
   stops.forEach(function(s,i){
     const e=editOf(day,s._k);
     if(e.t) pin[i]=e.t;
-    else if(i===0) pin[0]=s.t;
+    else if(i===0) pin[0]=하루시작;
   });
-  const r=recalc(stops,{start:stops[0].t,stay:stay,ride:rides,pin:pin});
+  const r=recalc(stops,{start:하루시작,stay:stay,ride:rides,pin:pin});
   r.stay=stay; r.rides=rides;
   return r;
 }
@@ -5189,10 +5255,16 @@ function dayWarns(day){
   const by={}; SPOT.forEach(function(s){ by[s.n]=s; });
   return stops.map(function(s,i){
     const 지금=p.arrive[i], out=[];
-    if(s.ty==='meal'){ const w=mealWarn(s.t,지금); if(w) out.push(w); }
+    if(s.ty==='meal'){ const w=mealWarn(s.n,s.t,지금); if(w) out.push(w); }
     const sw=spotWarn(by[s.n],요일,지금); if(sw) out.push(sw);
     const e=editOf(day,s._k);
-    if(e.fix||s.ty==='ship'){ const fw=fixWarn(s.n,e.t||s.t,지금); if(fw) out.push(fw); }
+    /* **견주는 것은 못 박은 시각이 아니라 그대로 갔을 때의 도착이다** — 못 박으면
+       arrive 가 못 박은 값과 같아져, 배를 놓치는데도 경고가 영영 뜨지 않는다.
+       첫 정차지는 앞 일정이 없어 '그대로 갔을 때' 라는 것이 없다. */
+    if(i>0){
+      if(e.fix||s.ty==='ship'){ const fw=fixWarn(s.n,e.t||s.t,p.natural[i]); if(fw) out.push(fw); }
+      else if(e.t){ const bw=backWarn(s.n,e.t,p.natural[i]); if(bw) out.push(bw); }
+    }
     return out;
   });
 }
@@ -5389,8 +5461,12 @@ document.getElementById('tl').addEventListener('change',function(e){
   }
   else if(e.target.classList.contains('eb')){
     const v=subMemo(row);
-    /* 배포판 메모와 같아졌으면 편집을 지운다 — 없는 편집을 들고 있을 까닭이 없다 */
-    const 배포메모=subParts((D[curDay].stops[+키]||{}).sub).메모;
+    /* 배포판 메모와 같아졌으면 편집을 지운다 — 없는 편집을 들고 있을 까닭이 없다.
+       **새로 넣은 정차지와 장소를 바꾼 줄은 견줄 배포판 메모가 없다.** 키가 '+1' 이면
+       +키 가 1 이 되어 엉뚱한 배포판 정차지와 견주게 되고, 장소를 바꾼 줄은 지워진
+       옛 곳의 메모와 견주게 되어 우연히 같은 글을 적으면 편집이 사라진다. */
+    const 배포짝=(키.charAt(0)!=='+'&&!editOf(curDay,키).place)?D[curDay].stops[+키]:null;
+    const 배포메모=배포짝?subParts(배포짝.sub).메모:null;
     if(v&&v!==배포메모) editSet(curDay,키,'sub',v); else editDel(curDay,키,'sub');
   }
   else if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
