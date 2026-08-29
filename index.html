@@ -828,12 +828,13 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 /* 설명 칸 — 사실 칩이 앞에 붙고 그 뒤로 메모 칸이 남은 자리를 채운다 */
 .erow .esb{flex:1 0 100%;align-items:flex-start}
 .erow .esbwrap{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0;align-items:center}
+/* 자동으로 붙는 값 — 누를 수 없다는 것이 손가락에도 보여야 한다 */
 .erow .esbchip{
-  appearance:none;cursor:pointer;font-family:inherit;font-size:11px;
+  display:inline-block;font-family:inherit;font-size:11px;
   padding:2px 7px;border-radius:11px;border:1px solid var(--line);
-  background:var(--seasoft);color:var(--sea);white-space:nowrap
+  background:var(--seasoft);color:var(--sea);white-space:nowrap;
+  cursor:default;user-select:none
 }
-.erow .esbchip:hover{background:#fff;color:#B5583C;border-color:#E2C4BD}
 .erow .eb{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:4px 6px;
   border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
 .erow .en{flex:1;min-width:0;font-family:inherit;font-size:12.5px;padding:4px 6px;
@@ -4248,12 +4249,11 @@ function subParts(sub){
   });
   return { 사실:사실, 메모:메모.join(' · ') };
 }
-/* 화면에 있는 칩과 메모를 도로 한 줄로 잇는다 */
-function subJoin(줄){
-  const 칩=[].slice.call(줄.querySelectorAll('.esbchip')).map(function(b){ return b.dataset.v; });
+/* **메모만 저장한다.** 사실 조각은 배포판 것을 stopsOf 가 도로 붙여 주므로
+   여기서 함께 저장하면 두 벌이 되어 겹친다. */
+function subMemo(줄){
   const 칸=줄.querySelector('.eb');
-  const 메모=String((칸&&칸.value)||'').trim();
-  return 칩.concat(메모?[메모]:[]).join(' · ');
+  return String((칸&&칸.value)||'').trim();
 }
 /* 편집 중일 때 카드 안에 붙는 줄.
    **키(＿k)와 자리(화면 순서)는 다르다.** 편집 값은 키로 찾고, 계산 결과(window.__plan)는
@@ -4271,9 +4271,10 @@ function editRow(day,키,s,자리){
        const 갈래=subParts(s.sub);
        return '<label class="esb">설명 <span class="esbwrap">'
          +갈래.사실.map(function(x){
-            return '<button type="button" class="esbchip" data-v="'+pickEsc(x)+'" title="눌러서 지웁니다">'+pickEsc(x)+' ×</button>';
+            /* 거리·시간·요금은 자동으로 나오는 값이라 손대지 못하게 둔다 */
+            return '<span class="esbchip" title="자동으로 붙는 값이라 고치지 않습니다">'+pickEsc(x)+'</span>';
           }).join('')
-         +'<input type="text" class="eb" value="'+pickEsc(갈래.메모)+'" placeholder="설명" autocomplete="off"></span></label>';
+         +'<input type="text" class="eb" value="'+pickEsc(갈래.메모)+'" placeholder="메모" autocomplete="off"></span></label>';
      })()
     +'<label>도착 <input type="time" class="et" value="'+도착+'"></label>'
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
@@ -4993,7 +4994,12 @@ function stopsOf(day){
        것뿐이기 때문이다. 장소를 바꾸는 것(e.place)과는 다른 일이라 키도 따로 둔다.
        장소를 바꾼 뒤 제목을 또 고칠 수 있으므로 이것이 마지막에 얹힌다. */
     if(e.name) s=Object.assign({}, s, { n:e.name });
-    if(e.sub!==undefined) s=Object.assign({}, s, { sub:e.sub });
+    /* **거리·이동시간·통행료는 사람이 고치지 않는다.** 배포판 값을 그대로 두고 메모만
+       갈아 끼운다. 저장된 것에 사실이 섞여 들어와도 다시 떼어내므로 겹치지 않는다. */
+    if(e.sub!==undefined){
+      const 사실=subParts(바탕.sub).사실, 메모=subParts(e.sub).메모;
+      s=Object.assign({}, s, { sub:사실.concat(메모?[메모]:[]).join(' · ') });
+    }
     /* **_k 는 편집 키다.** 화면 순서(인덱스)로 편집을 찾으면 순서를 바꾼 순간 어긋난다. */
     return Object.assign({}, s, { _k:키 });
   }).filter(Boolean);
@@ -5289,8 +5295,10 @@ document.getElementById('tl').addEventListener('change',function(e){
     if(v) editSet(curDay,키,'name',v); else editDel(curDay,키,'name');
   }
   else if(e.target.classList.contains('eb')){
-    const v=subJoin(row);
-    if(v) editSet(curDay,키,'sub',v); else editDel(curDay,키,'sub');
+    const v=subMemo(row);
+    /* 배포판 메모와 같아졌으면 편집을 지운다 — 없는 편집을 들고 있을 까닭이 없다 */
+    const 배포메모=subParts((D[curDay].stops[+키]||{}).sub).메모;
+    if(v&&v!==배포메모) editSet(curDay,키,'sub',v); else editDel(curDay,키,'sub');
   }
   else if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
   else if(e.target.classList.contains('es')) editSet(curDay,키,'stay',Math.max(0,+e.target.value||0));
@@ -5354,17 +5362,6 @@ document.getElementById('tl').addEventListener('click',function(e){
       render(curDay); warmRides(curDay);
       return;
     }
-  }
-  /* 사실 칩을 누르면 그 조각만 설명에서 빠진다 */
-  const 칩=e.target.closest('.esbchip');
-  if(칩){
-    const 줄2=칩.closest('.erow'); if(!줄2) return;
-    const 키2=줄2.dataset.k;
-    칩.remove();
-    const v=subJoin(줄2);
-    if(v) editSet(curDay,키2,'sub',v); else editDel(curDay,키2,'sub');
-    render(curDay);
-    return;
   }
   const 여닫기=e.target.closest('.epb');
   if(여닫기){
