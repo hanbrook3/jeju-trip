@@ -815,6 +815,10 @@ button{font-family:inherit;font-size:inherit;color:inherit}
   border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink2)
 }
 .erow input[type=number]{width:56px}
+/* 제목 칸은 한 줄을 다 쓴다 — 이름이 길어 좁으면 앞뒤가 잘려 무엇을 고치는지 안 보인다 */
+.erow .enm{flex:1 0 100%}
+.erow .en{flex:1;min-width:0;font-family:inherit;font-size:12.5px;padding:4px 6px;
+  border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
 .erow .ewarn{
   flex:1 0 100%;margin-top:2px;padding:6px 8px;border-radius:6px;
   background:var(--ambersoft);color:#8A5A12;font-size:11.5px;line-height:1.5
@@ -4208,6 +4212,7 @@ function editRow(day,키,s,자리){
   const 경고=(window.__warn&&window.__warn[자리])||[];
   const 끝=ordOf(day).length-1;
   return '<div class="erow" data-k="'+pickEsc(키)+'" data-at="'+자리+'">'
+    +'<label class="enm">제목 <input type="text" class="en" value="'+pickEsc(s.n||'')+'" placeholder="정차지 이름" autocomplete="off"></label>'
     +'<label>도착 <input type="time" class="et" value="'+도착+'"></label>'
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
     +'<label class="ef"><input type="checkbox" class="ex"'+((e.fix||s.ty==='ship')?' checked':'')+'> 시각 고정</label>'
@@ -4864,6 +4869,11 @@ function editSet(day,idx,key,val){
   e[day][idx][key]=val;
   editSave(e);
 }
+/* 되돌리려면 값을 비우는 것이 아니라 지워야 한다 — 빈 값이 남으면 배포판 값을 덮는다 */
+function editDel(day,idx,key){
+  const e=editGet();
+  if(e[day]&&e[day][idx]){ delete e[day][idx][key]; editSave(e); }
+}
 /* 그날의 화면 순서. 손댄 적이 없으면 배포판 그대로다. */
 function ordOf(day){
   const e=editGet()[day];
@@ -4917,6 +4927,10 @@ function stopsOf(day){
       옛설명.forEach(function(k){ delete s[k]; });
       s=Object.assign(s, placeInfo(e.place.n));
     }
+    /* **제목만 고친 것은 설명·사진·좌표를 건드리지 않는다.** 같은 곳을 달리 부르는
+       것뿐이기 때문이다. 장소를 바꾸는 것(e.place)과는 다른 일이라 키도 따로 둔다.
+       장소를 바꾼 뒤 제목을 또 고칠 수 있으므로 이것이 마지막에 얹힌다. */
+    if(e.name) s=Object.assign({}, s, { n:e.name });
     /* **_k 는 편집 키다.** 화면 순서(인덱스)로 편집을 찾으면 순서를 바꾼 순간 어긋난다. */
     return Object.assign({}, s, { _k:키 });
   }).filter(Boolean);
@@ -5112,11 +5126,11 @@ function editCode(){
     }
     stops.forEach(function(s,i){
       const c=editOf(d,s._k), 새것=s._k.charAt(0)==='+';
-      if(!새것&&!순서바뀜&&p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place) return;
+      if(!새것&&!순서바뀜&&p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place&&!c.name) return;
       const 조각=["t:"+따옴(p.arrive[i])];
-      if(새것||c.place){
+      if(새것||c.place||c.name){
         조각.push('n:'+따옴(s.n));
-        if(s.ll) 조각.push('ll:['+s.ll[0]+','+s.ll[1]+']');
+        if((새것||c.place)&&s.ll) 조각.push('ll:['+s.ll[0]+','+s.ll[1]+']');
       }
       if(새것) 조각.push('ty:'+따옴(s.ty||'spot'));
       if(c.stay!==undefined) 조각.push('stay:'+c.stay);
@@ -5140,7 +5154,12 @@ document.getElementById('tl').addEventListener('change',function(e){
   if(!editOn) return;
   const row=e.target.closest('.erow'); if(!row) return;
   const 키=row.dataset.k;
-  if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
+  if(e.target.classList.contains('en')){
+    const v=String(e.target.value||'').trim();
+    /* 비우면 편집을 지워 배포판 이름으로 돌아간다 */
+    if(v) editSet(curDay,키,'name',v); else editDel(curDay,키,'name');
+  }
+  else if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
   else if(e.target.classList.contains('es')) editSet(curDay,키,'stay',Math.max(0,+e.target.value||0));
   else if(e.target.classList.contains('ex')) editSet(curDay,키,'fix',e.target.checked);
   else return;
