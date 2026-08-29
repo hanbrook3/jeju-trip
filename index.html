@@ -800,6 +800,14 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 }
 .editbar .ekeyok{color:var(--sea);font-size:11px}
 .editbar .ekeyok[hidden]{display:none}
+/* 저장 칸 — 평소에는 이름만, 누르면 할 일이 펼쳐진다 */
+.editbar .slots{display:flex;gap:6px;flex-wrap:wrap}
+.editbar .eslot{display:inline-flex;gap:4px;align-items:center}
+.editbar .eslot .slotdo{display:none;gap:4px}
+.editbar .eslot.open .slotdo{display:inline-flex}
+.editbar .eslot.open .slotname{background:var(--sea);border-color:var(--sea);color:#fff}
+/* 든 것이 있으면 점을 붙인다 — 어느 칸이 비었는지 눌러 보지 않아도 알아야 한다 */
+.editbar .eslot.full .slotname::after{content:' ●';font-size:9px;vertical-align:1px}
 .editbar button{
   appearance:none;cursor:pointer;font-family:inherit;font-size:11.5px;
   padding:4px 9px;border-radius:6px;border:1px solid var(--line);
@@ -1528,6 +1536,18 @@ summary.fhead .chev{flex:0 0 18px}
     <button type="button" id="ekeysave">저장</button>
   </span>
   <span class="ekeyok" id="ekeyok" hidden>실제 소요시간</span>
+  <!-- 고친 일정을 담아 두는 칸 둘. 비 오는 날 안과 원래 안을 나란히 두고 견주려는 것이다.
+       누르면 담기·꺼내기·비우기가 펼쳐진다 — 한 번에 실행하면 실수로 덮어쓴다. -->
+  <span class="slots" id="slots">
+    <span class="eslot" data-s="1"><button type="button" class="slotname">저장 1</button>
+      <span class="slotdo"><button type="button" data-do="put">담기</button>
+      <button type="button" data-do="get">꺼내기</button>
+      <button type="button" data-do="del">비우기</button></span></span>
+    <span class="eslot" data-s="2"><button type="button" class="slotname">저장 2</button>
+      <span class="slotdo"><button type="button" data-do="put">담기</button>
+      <button type="button" data-do="get">꺼내기</button>
+      <button type="button" data-do="del">비우기</button></span></span>
+  </span>
   <span class="sp">
     <button type="button" id="editreset">원래대로</button>
     <button type="button" id="editcopy">코드 복사</button>
@@ -5081,12 +5101,77 @@ function hashSync(){
   h.classList.toggle('on',있음);
   h.title=있음?'일정 편집 — 바꾼 일정이 적용 중입니다':'일정 편집';
 }
+/* 고친 일정을 담아 두는 칸. 지문을 함께 저장해 **배포판이 바뀌면 버린다** —
+   옛 일정에 매긴 편집을 새 일정에 씌우면 엉뚱한 정차지가 바뀐다(editLoad 와 같은 이유). */
+function slotKey(n){ return 'jeju-trip-slot'+n; }
+function slotRead(n){
+  try{
+    const raw=localStorage.getItem(slotKey(n));
+    if(!raw) return null;
+    const o=JSON.parse(raw);
+    if(o.fp!==planFingerprint(D)){ localStorage.removeItem(slotKey(n)); return null; }
+    return o;
+  }catch(e){ return null; }
+}
+function slotPut(n){
+  try{
+    const 때=new Date();
+    const 적기=function(v){ return (v<10?'0':'')+v; };
+    localStorage.setItem(slotKey(n),JSON.stringify({
+      fp:planFingerprint(D), edit:editGet(),
+      at:(때.getMonth()+1)+'/'+때.getDate()+' '+적기(때.getHours())+':'+적기(때.getMinutes())
+    }));
+  }catch(e){}
+}
+function slotDel(n){ try{ localStorage.removeItem(slotKey(n)); }catch(e){} }
+/* 칸 상태를 단추에 비춘다 — 든 것이 있으면 점이 붙고 담은 때가 설명으로 나온다 */
+function slotSync(){
+  document.querySelectorAll('#slots .eslot').forEach(function(칸){
+    const o=slotRead(칸.dataset.s);
+    칸.classList.toggle('full',!!o);
+    const 이름=칸.querySelector('.slotname');
+    if(이름) 이름.title=o?('담은 때 '+(o.at||'')+' — 누르면 담기·꺼내기·비우기'):'비어 있음 — 누르면 담기';
+    const 꺼내=칸.querySelector('[data-do=get]'), 비움=칸.querySelector('[data-do=del]');
+    if(꺼내) 꺼내.disabled=!o;
+    if(비움) 비움.disabled=!o;
+  });
+}
+document.getElementById('slots').addEventListener('click',function(e){
+  const 칸=e.target.closest('.eslot'); if(!칸) return;
+  const n=칸.dataset.s;
+  if(e.target.closest('.slotname')){
+    const 열림=칸.classList.contains('open');
+    document.querySelectorAll('#slots .eslot').forEach(function(x){ x.classList.remove('open'); });
+    if(!열림){
+      칸.classList.add('open');
+      /* 4초 두고 저절로 접는다 — 열어 둔 채 잊으면 다음에 잘못 누른다 */
+      setTimeout(function(){ 칸.classList.remove('open'); },4000);
+    }
+    return;
+  }
+  const 짓=e.target.closest('[data-do]');
+  if(!짓) return;
+  const 무엇=짓.dataset.do;
+  if(무엇==='put'){ slotPut(n); }
+  else if(무엇==='get'){
+    const o=slotRead(n); if(!o) return;
+    editData=o.edit||{};
+    editSave(editData);
+    칸.classList.remove('open');
+    slotSync(); render(curDay); warmRides(curDay);
+    return;
+  }
+  else if(무엇==='del'){ slotDel(n); }
+  칸.classList.remove('open');
+  slotSync();
+});
 function setEdit(on){
   editOn=!!on;
   pickKey='';
   const bar=document.getElementById('editbar');
   if(bar) bar.hidden=!editOn;
   ekeySync();
+  if(editOn) slotSync();
   document.body.classList.toggle('editing',editOn);
   if(editOn) warmRides(curDay);
   render(curDay);
