@@ -846,6 +846,8 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .eride{
   padding:3px 14px;font-size:11px;color:var(--faint)
 }
+/* 구워 둔 실측이 없어 어림으로 낸 값 — 실측과 섞이지 않게 표시한다 */
+.eride .egu{padding:0 4px;border-radius:6px;background:var(--ambersoft);color:#8A5A12}
 /* 편집 버튼 묶음 — 장소 바꾸기 · 위아래 · 넣기 · 빼기. 편집 중에만 나온다 */
 .erow .ebtns{display:flex;flex-wrap:wrap;gap:5px;flex:1 0 100%;margin-top:2px}
 .erow .ebtns button{
@@ -2698,12 +2700,41 @@ function editClear(){ try{ localStorage.removeItem(EDIT_KEY); }catch(e){} }
 /* 두 곳 사이 이동시간(분). 경로 서버의 실제 도로 소요시간을 쓰고,
    막히면 추정으로 넘어간다 — 계산이 멈추면 편집기를 못 쓰게 되기 때문이다.
    좌표쌍마다 캐시해 같은 구간을 두 번 묻지 않는다. */
+/* 구간 실측 — 카카오에서 받아 구워 두었다. 키가 없어도 실제 도로 시간을 쓴다.
+   [분, km, 통행료]. 다시 만들려면 tools/build-rides.js */
+const RIDE={
+ '33.5169,126.5316>33.4271,126.6038':[32,14.8,0],
+ '33.4271,126.6038>33.3618,126.6229':[11,9.2,0],
+ '33.3618,126.6229>33.3050,126.7122':[28,20,0],
+ '33.3050,126.7122>33.2745,126.6600':[17,10.7,0],
+ '33.3389,126.2685>33.3382,126.2658':[1,0.5,0],
+ '33.3560,126.2752>33.3428,126.1745':[23,13.8,0],
+ '33.3428,126.1745>33.2953,126.1640':[13,7.8,0],
+ '33.2953,126.1640>33.2529,126.3685':[45,27,0],
+ '33.4533,126.9247>33.4591,126.9405':[4,1.8,0],
+ '33.4591,126.9405>33.4451,126.9135':[8,3.8,0],
+ '33.4451,126.9135>33.4235,126.9301':[9,4.5,0],
+ '33.4235,126.9301>33.4935,126.8991':[19,10.5,0],
+ '33.3955,126.6849>33.3578,126.4625':[49,37.2,0],
+ '33.2640,126.3317>33.2044,126.2896':[21,13.6,0],
+ '33.2825,126.7166>33.3050,126.7122':[5,2.9,0]
+};
 const rideCache={};
 function rideKey(a,b){ return a[0].toFixed(4)+','+a[1].toFixed(4)+'>'+b[0].toFixed(4)+','+b[1].toFixed(4); }
 function rideNow(a,b){
   if(!a||!b) return null;
   const k=rideKey(a,b);
-  return rideCache[k]!==undefined ? rideCache[k] : guessMin(a,b);
+  if(rideCache[k]!==undefined) return rideCache[k];
+  /* **구워 둔 실측이 있으면 추정보다 먼저 쓴다.** 가족은 키가 없어 추정식으로
+     떨어지는데 실측 대비 오차가 최대 31%다. 구워 두면 누구나 실제 도로 시간을 쓴다. */
+  const 구운=RIDE[k];
+  if(구운) return 구운[0];
+  return guessMin(a,b);
+}
+/* 구워 둔 실측 한 벌 — [분, km, 통행료]. 없으면 null */
+function rideInfo(a,b){
+  if(!a||!b) return null;
+  return RIDE[rideKey(a,b)]||null;
 }
 async function rideFetch(a,b){
   if(!a||!b) return null;
@@ -4293,8 +4324,15 @@ function editRow(day,키,s,자리){
     +(function(){
        const r=(p.rides&&p.rides[자리]);
        if(r===null||r===undefined) return '';
-       const 거리=km(s.ll,(stopsOf(day)[자리+1]||{}).ll);
-       return '<div class="eride">↓ 이동 '+r+'분'+(거리?' · '+거리.toFixed(1)+'km':'')+'</div>';
+       const 다음=stopsOf(day)[자리+1]||{};
+       /* 구워 둔 실측이 있으면 도로 거리와 통행료를 그대로 보여 준다.
+          없으면 직선 거리로 물러선다 — 편집으로 장소를 옮기면 실측에 없는 조합이 된다. */
+       const 실측=rideInfo(rideLL(s,SPOT),rideLL(다음,SPOT));
+       const 거리=실측?실측[1]:km(s.ll,다음.ll);
+       const 요금=(실측&&실측[2])?' · 통행료 '+실측[2].toLocaleString()+'원':'';
+       return '<div class="eride">↓ 이동 '+r+'분'
+         +(거리?' · '+(실측?거리:거리.toFixed(1))+'km':'')+요금
+         +(실측?'':' <span class="egu">어림</span>')+'</div>';
      })();
 }
 function render(i){
