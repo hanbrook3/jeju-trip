@@ -825,6 +825,17 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .erow input[type=number]{width:56px}
 /* 제목 칸은 한 줄을 다 쓴다 — 이름이 길어 좁으면 앞뒤가 잘려 무엇을 고치는지 안 보인다 */
 .erow .enm{flex:1 0 100%}
+/* 설명 칸 — 사실 칩이 앞에 붙고 그 뒤로 메모 칸이 남은 자리를 채운다 */
+.erow .esb{flex:1 0 100%;align-items:flex-start}
+.erow .esbwrap{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0;align-items:center}
+.erow .esbchip{
+  appearance:none;cursor:pointer;font-family:inherit;font-size:11px;
+  padding:2px 7px;border-radius:11px;border:1px solid var(--line);
+  background:var(--seasoft);color:var(--sea);white-space:nowrap
+}
+.erow .esbchip:hover{background:#fff;color:#B5583C;border-color:#E2C4BD}
+.erow .eb{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:4px 6px;
+  border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
 .erow .en{flex:1;min-width:0;font-family:inherit;font-size:12.5px;padding:4px 6px;
   border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
 .erow .ewarn{
@@ -4221,6 +4232,29 @@ function detail(s){
   if(s.note) h+=`<div class="note" style="margin-top:14px">${apText(s.note)}</div>`;
   return h+'</div>';
 }
+/* 설명(부제)을 **사실 조각과 메모로 가른다.** 거리·시간·요금은 사람이 고칠 일이
+   거의 없는데 메모와 한 줄에 섞여 있어 고치기 번거롭다. 사실은 칩으로 빼서 지우기만
+   할 수 있게 두고, 편집칸에는 메모만 남긴다. 저장할 때 다시 ` · ` 로 잇는다.
+   16곳이 이렇게 섞여 있다 — `항해 2시간 · 15:30 제주 도착` 처럼. */
+function subParts(sub){
+  /* **구분자는 공백을 낀 ` · ` 뿐이다.** 붙여 쓴 가운뎃점까지 나누면
+     `김밥·샌드위치` 가 `김밥 · 샌드위치` 로 벌어져 원문이 바뀐다. */
+  const 사실=[], 메모=[];
+  String(sub||'').split(/\s+·\s+/).forEach(function(x){
+    const v=x.trim(); if(!v) return;
+    if(/\d+(\.\d+)?\s*km/.test(v)||/\d+\s*시간/.test(v)||/^[^\d]*\d+\s*분/.test(v)
+      ||/통행료|요금/.test(v)||/\d[\d,]*\s*원/.test(v)) 사실.push(v);
+    else 메모.push(v);
+  });
+  return { 사실:사실, 메모:메모.join(' · ') };
+}
+/* 화면에 있는 칩과 메모를 도로 한 줄로 잇는다 */
+function subJoin(줄){
+  const 칩=[].slice.call(줄.querySelectorAll('.esbchip')).map(function(b){ return b.dataset.v; });
+  const 칸=줄.querySelector('.eb');
+  const 메모=String((칸&&칸.value)||'').trim();
+  return 칩.concat(메모?[메모]:[]).join(' · ');
+}
 /* 편집 중일 때 카드 안에 붙는 줄.
    **키(＿k)와 자리(화면 순서)는 다르다.** 편집 값은 키로 찾고, 계산 결과(window.__plan)는
    화면 순서 배열이므로 자리로 찾는다. 이걸 섞으면 순서를 바꾼 순간 값이 어긋난다. */
@@ -4233,6 +4267,14 @@ function editRow(day,키,s,자리){
   const 끝=ordOf(day).length-1;
   return '<div class="erow" data-k="'+pickEsc(키)+'" data-at="'+자리+'">'
     +'<label class="enm">제목 <input type="text" class="en" value="'+pickEsc(s.n||'')+'" placeholder="정차지 이름" autocomplete="off"></label>'
+    +(function(){
+       const 갈래=subParts(s.sub);
+       return '<label class="esb">설명 <span class="esbwrap">'
+         +갈래.사실.map(function(x){
+            return '<button type="button" class="esbchip" data-v="'+pickEsc(x)+'" title="눌러서 지웁니다">'+pickEsc(x)+' ×</button>';
+          }).join('')
+         +'<input type="text" class="eb" value="'+pickEsc(갈래.메모)+'" placeholder="설명" autocomplete="off"></span></label>';
+     })()
     +'<label>도착 <input type="time" class="et" value="'+도착+'"></label>'
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
     +'<label class="ef"><input type="checkbox" class="ex"'+((e.fix||s.ty==='ship')?' checked':'')+'> 시각 고정</label>'
@@ -4951,6 +4993,7 @@ function stopsOf(day){
        것뿐이기 때문이다. 장소를 바꾸는 것(e.place)과는 다른 일이라 키도 따로 둔다.
        장소를 바꾼 뒤 제목을 또 고칠 수 있으므로 이것이 마지막에 얹힌다. */
     if(e.name) s=Object.assign({}, s, { n:e.name });
+    if(e.sub!==undefined) s=Object.assign({}, s, { sub:e.sub });
     /* **_k 는 편집 키다.** 화면 순서(인덱스)로 편집을 찾으면 순서를 바꾼 순간 어긋난다. */
     return Object.assign({}, s, { _k:키 });
   }).filter(Boolean);
@@ -5211,13 +5254,14 @@ function editCode(){
     }
     stops.forEach(function(s,i){
       const c=editOf(d,s._k), 새것=s._k.charAt(0)==='+';
-      if(!새것&&!순서바뀜&&p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place&&!c.name) return;
+      if(!새것&&!순서바뀜&&p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place&&!c.name&&c.sub===undefined) return;
       const 조각=["t:"+따옴(p.arrive[i])];
       if(새것||c.place||c.name){
         조각.push('n:'+따옴(s.n));
         if((새것||c.place)&&s.ll) 조각.push('ll:['+s.ll[0]+','+s.ll[1]+']');
       }
       if(새것) 조각.push('ty:'+따옴(s.ty||'spot'));
+      if(c.sub!==undefined) 조각.push('sub:'+따옴(c.sub));
       if(c.stay!==undefined) 조각.push('stay:'+c.stay);
       if(c.fix) 조각.push('fix:true');
       const 라벨=새것 ? '[새로 넣음]' : ((원본[+s._k]||{}).n||'');
@@ -5243,6 +5287,10 @@ document.getElementById('tl').addEventListener('change',function(e){
     const v=String(e.target.value||'').trim();
     /* 비우면 편집을 지워 배포판 이름으로 돌아간다 */
     if(v) editSet(curDay,키,'name',v); else editDel(curDay,키,'name');
+  }
+  else if(e.target.classList.contains('eb')){
+    const v=subJoin(row);
+    if(v) editSet(curDay,키,'sub',v); else editDel(curDay,키,'sub');
   }
   else if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
   else if(e.target.classList.contains('es')) editSet(curDay,키,'stay',Math.max(0,+e.target.value||0));
@@ -5306,6 +5354,17 @@ document.getElementById('tl').addEventListener('click',function(e){
       render(curDay); warmRides(curDay);
       return;
     }
+  }
+  /* 사실 칩을 누르면 그 조각만 설명에서 빠진다 */
+  const 칩=e.target.closest('.esbchip');
+  if(칩){
+    const 줄2=칩.closest('.erow'); if(!줄2) return;
+    const 키2=줄2.dataset.k;
+    칩.remove();
+    const v=subJoin(줄2);
+    if(v) editSet(curDay,키2,'sub',v); else editDel(curDay,키2,'sub');
+    render(curDay);
+    return;
   }
   const 여닫기=e.target.closest('.epb');
   if(여닫기){
