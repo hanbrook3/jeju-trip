@@ -1105,8 +1105,7 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 /* 카카오 지도는 Leaflet 판들 뒤에 깔린다. 핀·경로·개략도는 그대로 위에 그려진다.
    카카오 타일을 Leaflet 에 직접 쓰는 것은 약관 위반이라, 카카오가 제 SDK 로
    지도를 그리게 하고 화면만 맞춘다. */
-#kmap{position:absolute;inset:0;z-index:0}
-#kmap[hidden]{display:none}
+
 /* 왼쪽 아래 배지를 누르면 배경이 바뀐다 */
 .leaflet-control-attribution.bgswap{
   cursor:pointer;user-select:none;
@@ -2246,78 +2245,34 @@ const TILE_SRC=[
  {u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   s:[''], a:'© OpenStreetMap 기여자'}
 ];
-let tileIdx=0;
+/* 배지를 누르면 오가는 또 하나의 배경. 폴백 목록과는 별개다 —
+   여기서 타일이 안 오면 다음 서버로 넘어가는 것이 아니라 일반 지도로 되돌아간다.
+   확장자가 .jpeg 다(일반 지도는 .png). */
+const TILE_AIR={u:'https://xdworld{s}.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg',
+  s:['','1','2','3'], a:'국토지리정보원 항공사진'};
+let tileIdx=0, airBg=false;
 /* ══════ 지도 배경 바꾸기 ══════
-   카카오는 타일 주소를 공개하지 않고, 남의 라이브러리에서 타일을 가져다 쓰는 것을
-   약관 제11조로 막는다("다른 라이브러리 사용은 지원하지 않습니다"). 그래서 카카오가
-   제 SDK 로 지도를 그리게 하고, 그 위에 지금의 핀·경로를 그대로 얹는다.
-   배율은 실측으로 맞췄다 — 카카오 레벨 = 20 - Leaflet 줌 (레벨 1↔줌 19, 14↔6).
-   카카오 배경은 인터넷이 있어야 한다. 없으면 국토지리정보원으로 돌아간다. */
-let kmap=null, kakaoBg=false;
-function kmapBox(){
-  let d=document.getElementById("kmap");
-  if(!d){
-    d=document.createElement("div");
-    d.id="kmap"; d.hidden=true;
-    const m=document.getElementById("map");
-    if(!m) return null;
-    m.insertBefore(d,m.firstChild);
-  }
-  return d;
-}
-/* 개략도는 타일이 막혔을 때 대신 나오는 밑그림이라 vecpane(z-index 150)에 늘 그려져
-   있고 타일이 덮고 있을 뿐이다. 카카오 배경일 때는 타일을 걷어내므로 개략도가 위로
-   드러난다 — 카카오가 배경을 대신하니 숨긴다. */
-function vecShow(보임){
-  try{ const p=map&&map.getPane("vecpane"); if(p) p.style.display=보임?"":"none"; }catch(e){}
-}
-/* Leaflet 이 움직일 때마다 카카오도 같은 자리로 옮긴다 */
-function syncKakao(){
-  if(!kakaoBg||!kmap||!map) return;
-  try{
-    const c=map.getCenter();
-    const lv=Math.max(1,Math.min(14,20-map.getZoom()));
-    if(kmap.getLevel()!==lv) kmap.setLevel(lv);
-    kmap.setCenter(new kakao.maps.LatLng(c.lat,c.lng));
-  }catch(e){}
-}
-async function setKakaoBg(on){
-  const d=kmapBox();
-  if(!d||!map) return;
-  if(on){
-    try{ await loadKakaoSdk(); }
-    catch(e){ setBadge("인터넷이 없어 바꿀 수 없습니다"); setTimeout(setBadge,2500); return; }
-    if(!kmap){
-      const c=map.getCenter();
-      kmap=new kakao.maps.Map(d,{center:new kakao.maps.LatLng(c.lat,c.lng),
-        level:Math.max(1,Math.min(14,20-map.getZoom())),
-        draggable:false,scrollwheel:false,disableDoubleClickZoom:true,keyboardShortcuts:false});
-    }
-    d.hidden=false;
-    kakaoBg=true;
-    try{ if(tileLyr&&map.hasLayer(tileLyr)) map.removeLayer(tileLyr); }catch(e){}
-    /* 타일이 없다고 개략도로 넘어가지 않게 한다. 개략도는 배율을 12 로 묶으므로
-       그것도 되돌린다 — 카카오는 더 확대할 수 있다. */
-    buildState="ok";
-    vecShow(false);
-    try{ map.setMaxZoom(17); }catch(e){}
-    try{ const bb=document.getElementById("build"); if(bb) bb.className="build ok"; }catch(e){}
-    /* 숨겨져 있던 동안 크기를 모르므로 한 번 다시 재게 한다 */
-    setTimeout(function(){ try{ kmap.relayout(); }catch(e){} syncKakao(); },0);
-  }else{
-    kakaoBg=false;
-    d.hidden=true;
-    vecShow(true);
-    buildState="";
-    mountTiles(tileIdx);
-  }
+   배지를 누르면 **일반 지도와 항공사진**을 오간다. 둘 다 국토지리정보원 타일이다.
+
+   **전에는 카카오맵 배경이었으나 걷어냈다** (2026-08-29). 카카오는 타일 주소를
+   공개하지 않아 제 SDK 로 지도를 따로 그리게 하고 Leaflet 이 움직일 때마다 좌표를
+   맞춰 줘야 했는데, 지도 두 벌을 겹쳐 돌리는 셈이라 **느렸다.** 항공사진은 같은
+   타일 방식이라 가볍고, 지금 핀·경로·라벨이 그대로 위에 얹힌다. */
+function setAirBg(on){
+  if(!map) return;
+  airBg=!!on;
+  /* 일반으로 돌아올 때는 첫 서버부터 다시 본다 — 항공사진을 보는 동안 폴백이
+     어디까지 갔는지는 뜻이 없다. */
+  if(!airBg) tileIdx=0;
+  buildState="";
+  mountTiles(tileIdx);
   setBadge();
 }
 /* 배지는 지금 무엇을 보고 있는지 알리고, 누르면 바뀐다 */
 function setBadge(글){
   const el=document.querySelector(".leaflet-control-attribution");
   if(!el) return;
-  el.textContent=글||(kakaoBg?"카카오맵":(TILE_SRC[tileIdx]&&TILE_SRC[tileIdx].a)||"");
+  el.textContent=글||(airBg?TILE_AIR.a:(TILE_SRC[tileIdx]&&TILE_SRC[tileIdx].a)||"");
   el.classList.add("bgswap");
   el.title="눌러서 지도 배경 바꾸기";
 }
@@ -2329,26 +2284,31 @@ function bindBadge(){
   m.addEventListener("click",function(e){
     if(!e.target.closest(".leaflet-control-attribution")) return;
     e.preventDefault(); e.stopPropagation();
-    setKakaoBg(!kakaoBg);
+    setAirBg(!airBg);
   },true);
   setBadge();
 }
 function mountTiles(i){
-  if(!map||kakaoBg) return;
+  if(!map) return;
   tileIdx=i; tileErr=0;
   try{ if(tileLyr&&map.hasLayer(tileLyr)) map.removeLayer(tileLyr); }catch(e){}
-  const src=TILE_SRC[i];
+  const src=airBg?TILE_AIR:TILE_SRC[i];
   tileLyr=L.tileLayer(src.u,{maxZoom:19,attribution:src.a,subdomains:src.s,
     crossOrigin:true,updateWhenIdle:true,keepBuffer:1});
   tileLyr.on('tileload',function(){ tileErr=0; setBuild('ok'); });
   tileLyr.on('tileerror',function(){
     tileErr++;
     if(tileErr<4) return;
+    /* 항공사진이 안 오면 다음 서버가 아니라 일반 지도로 되돌린다 */
+    if(airBg){ setAirBg(false); return; }
     if(tileIdx+1<TILE_SRC.length) mountTiles(tileIdx+1);   /* 다음 서버로 */
     else setBuild('vec');
   });
   try{ map.setMaxZoom(17); }catch(e){}
   tileLyr.addTo(map);
+  /* 붙인 직후에는 화면 범위를 덜 재어 **타일 두 장만 요청하고 나머지가 빈 채로 남는다.**
+     지도를 조금만 움직이면 채워지는 것으로 확인했다. 한 박자 뒤에 다시 재게 한다. */
+  setTimeout(function(){ try{ map.invalidateSize(); tileLyr.redraw(); }catch(e){} },0);
 }
 function retryTiles(){
   if(!map) return;
@@ -2410,8 +2370,7 @@ function initMap(){
     routeLyr=L.layerGroup().addTo(map);
     pinLyr=L.layerGroup().addTo(map);
     map.on('zoomend',function(){ syncZoom(); declutter(); redrawRoute(); });
-    map.on('move resize',syncKakao);
-    map.on('resize',function(){ try{ if(kmap) kmap.relayout(); }catch(e){} });
+    map.on('resize',function(){ try{ if(tileLyr) tileLyr.redraw(); }catch(e){} });
     bindBadge();
     map.on('moveend',function(){ declutter(); redrawRoute(); });
     const bb=document.getElementById('build');
