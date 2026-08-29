@@ -2723,6 +2723,8 @@ const RIDE={
  '33.2825,126.7166>33.3050,126.7122':[5,2.9,0]
 };
 const rideCache={};
+/* 키로 받아 온 한 벌 — [분, km, 통행료]. 구워 둔 RIDE 와 같은 꼴이라 그대로 갈음한다. */
+const rideFull={};
 function rideKey(a,b){ return a[0].toFixed(4)+','+a[1].toFixed(4)+'>'+b[0].toFixed(4)+','+b[1].toFixed(4); }
 function rideNow(a,b){
   if(!a||!b) return null;
@@ -2734,10 +2736,12 @@ function rideNow(a,b){
   if(구운) return 구운[0];
   return guessMin(a,b);
 }
-/* 구워 둔 실측 한 벌 — [분, km, 통행료]. 없으면 null */
+/* 실측 한 벌 — [분, km, 통행료]. **받아 온 것이 구워 둔 것보다 앞선다** —
+   장소를 옮겨 구워 둔 조합에서 벗어났을 때 키로 받은 값이 가장 맞다. 없으면 null. */
 function rideInfo(a,b){
   if(!a||!b) return null;
-  return RIDE[rideKey(a,b)]||null;
+  const k=rideKey(a,b);
+  return rideFull[k]||RIDE[k]||null;
 }
 /* 여행 당일 그 시각을 yyyyMMddHHmm 으로. 자정을 넘겨도 날짜가 따라간다. */
 function 떠날때(day,hhmm){
@@ -2768,8 +2772,13 @@ async function rideFetch(a,b,때){
     const r=j&&j.routes&&j.routes[0];
     /* result_code 102·103 은 좌표가 도로에서 멀다는 뜻이다. 그때는 추정으로 넘어간다. */
     if(r&&r.result_code===0&&r.summary&&typeof r.summary.duration==='number'){
-      rideCache[k]=Math.round(r.summary.duration/60);
-      return rideCache[k];
+      const 분=Math.round(r.summary.duration/60);
+      rideCache[k]=분;
+      /* 거리와 통행료도 함께 담는다 — 안 담으면 화면이 직선 거리를 쓰고
+         받아 왔는데도 '어림' 이라고 붙는다. */
+      rideFull[k]=[분, +((r.summary.distance||0)/1000).toFixed(1),
+                   (r.summary.fare&&r.summary.fare.toll)||0];
+      return 분;
     }
   }catch(e){}
   return guessMin(a,b);
