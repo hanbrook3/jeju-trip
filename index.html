@@ -4349,16 +4349,33 @@ function render(i){
   let st=d.st;
   if(window.__plan){
     const p=window.__plan;
+    const 지금=stopsOf(i);
+    /* **배포판 자리(j)로 계산된 시각을 찾으면 안 된다.** 정차지를 넣거나 빼면 두 목록의
+       길이가 달라져 남의 시각을 가져오고, 범위를 넘으면 undefined → NaN:NaN 이 찍힌다.
+       배포판 정차지를 편집 키('0','1'…)로 지금 목록에서 되찾아 그 자리의 시각을 쓴다. */
     st=d.st.map(function(x){
       const 원래=hm2min(x[0]);
       if(원래===null) return x;
       const j=d.stops.findIndex(function(s){ return hm2min(s.t)===원래; });
-      if(j>=0) return [p.arrive[j],x[1]];
-      let 밀림=0;
+      if(j>=0){
+        const 자리=지금.findIndex(function(s){ return s._k===String(j); });
+        if(자리>=0&&p.arrive[자리]) return [p.arrive[자리],x[1]];
+        /* 그 정차지를 뺐다 — 아래 밀림 계산으로 넘어간다 */
+      }
+      /* 짝이 없는 항목(예: '숙소 복귀')은 **가장 가까운 남은 정차지**가 밀린 만큼 함께 민다.
+         앞의 마지막 정차지만 보면 그 사이를 통째로 빼 버렸을 때 기준을 잃고 배포판 값이
+         그대로 남는다. 뒤쪽이라도 가까운 것에 붙는 편이 실제에 가깝다. */
+      let 밀림=null, 거리=1e9;
       d.stops.forEach(function(s,n){
-        const t=hm2min(s.t);
-        if(t!==null&&t<=원래) 밀림=p.arriveMin[n]-t;
+        const 때=hm2min(s.t);
+        if(때===null) return;
+        const 자리=지금.findIndex(function(z){ return z._k===String(n); });
+        if(자리<0||p.arriveMin[자리]===undefined) return;
+        const d2=Math.abs(때-원래);
+        if(d2<거리){ 거리=d2; 밀림=p.arriveMin[자리]-때; }
       });
+      /* 기댈 곳이 하나도 없으면 배포판 값을 그대로 둔다 — 틀린 시각보다 낫다 */
+      if(밀림===null) return x;
       return [min2hm(원래+밀림),x[1]];
     });
   }
