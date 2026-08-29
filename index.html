@@ -781,6 +781,8 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .legend .lgtip{color:var(--faint);font-size:10.5px}
 .legend .lghash{color:var(--faint);cursor:pointer;padding:0 4px;user-select:none}
 .legend .lghash:hover{color:var(--ink2)}
+/* 저장된 편집이 적용 중 — 폭은 그대로 두고 색만 바꾼다 */
+.legend .lghash.on{color:var(--sea)}
 .editbar{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:7px 12px;background:var(--seasoft);border-bottom:1px solid var(--line);
@@ -3877,14 +3879,19 @@ function render(i){
   document.getElementById('dTitle').textContent=d.t;
   document.getElementById('dSub').textContent=d.s;
   if(i!==curDay) pickSi=-1;
-  if(editOn){ window.__plan=dayPlan(i); window.__warn=dayWarns(i); }
+  /* 저장된 편집은 편집 모드가 아닐 때도 화면에 반영한다 — 이 기능은 여행 중 대응이
+     목적이라, 바꾼 일정을 보면서 다녀야 하기 때문이다. 고친 것이 없는 날은 계산이
+     배포판과 똑같이 나오므로 건너뛴다. 경고는 편집 화면에서만 쓴다. */
+  const 반영=editOn||editHas(i);
+  window.__plan=반영?dayPlan(i):null;
+  window.__warn=editOn?dayWarns(i):null;
   /* 편집 중에는 배너 시각도 계산 결과를 따라야 한다 — 배너와 목록이 다른 시간을 말하면 안 된다.
      가운데 항목이 1~4일차는 거리이고 5일차는 시각이므로 첫 값이 HH:MM 인 것만 손댄다.
      배너와 정차지는 자리가 아니라 시각으로 맞춘다 — 배너 첫 항목이 첫 정차지인 날은
      다섯 중 하나뿐이다(2일차는 배너 09:45, 첫 정차지는 09:00 펜션 조식).
      짝이 없는 '숙소 복귀'(2·4일차)는 그 시각 앞 마지막 정차지가 밀린 만큼 함께 민다. */
   let st=d.st;
-  if(editOn&&window.__plan){
+  if(window.__plan){
     const p=window.__plan;
     st=d.st.map(function(x){
       const 원래=hm2min(x[0]);
@@ -3904,17 +3911,24 @@ function render(i){
   let mi=0;
   tl.innerHTML=stopsOf(i).map((s,si)=>{
     const has=s.feat||s.design||s.see||s.steps||s.warn||s.note;
+    /* 편집이 반영 중이면 계산된 도착 시각을 보여 준다. 배너와 같은 값이어야 한다. */
+    const 때=(window.__plan&&window.__plan.arrive[si])||s.t;
     /* 지도 핀 번호와 같은 순서 — 둘 다 좌표 있는 일정만 세므로 항상 일치한다 */
     const k=s.ll?mi++:-1;
     const mk=k>=0?` data-k="${k}" data-lat="${s.ll[0]}" data-lng="${s.ll[1]}"`:'';
     /* 편집 중에는 카드를 열어 둔 채 편집 줄만 보여 준다 — 접혀 있으면 편집 칸이 보이지 않는다 */
     return `<details class="stop ${s.ty}"${has?'':' data-x'}${mk}${editOn?' open':''}>
-      <summary class="head"><span class="tm">${apChip(s.t)}</span>
+      <summary class="head"><span class="tm">${apChip(때)}</span>
       <span class="ttl"><h3>${k>=0?`<b class="pnum">${k+1}</b>`:''}${s.n}</h3>${s.sub?`<p>${apText(s.sub)}</p>`:''}</span>
       ${has?CH:'<span></span>'}</summary>${editOn?editRow(i,si,s):(has?detail(s):'')}</details>`;}).join('');
   tl.querySelectorAll('details[data-x]').forEach(x=>x.querySelector('summary').style.cursor='default');
   if(editOn) tl.querySelectorAll('summary.head').forEach(x=>x.addEventListener('click',ev=>ev.preventDefault()));
   curDay=i;
+  hashSync();
+  /* 편집이 반영된 날은 편집 모드가 아니어도 실제 도로 소요시간을 받아 둔다 —
+     추정값으로 그린 시각이 편집 화면에서 본 것과 다르면 안 된다.
+     키가 없으면 받아 봐야 추정값 그대로라 부르지 않는다. */
+  if(!editOn&&반영&&naviKey()) warmRides(i);
   if(mapOn){ if(mapReady||typeof L!=='undefined') drawMapFor('trip'); else staticMap(); }
 
 }
@@ -4435,6 +4449,9 @@ document.getElementById('foodcards').addEventListener('toggle',e=>{
 /* 편집 내용 — {일차:{순번:{t,stay,fix}}} 꼴로 바뀐 값만 담는다 */
 let editData=null;
 function editGet(){ if(editData===null) editData=editLoad()||{}; return editData; }
+/* 그날에 저장된 편집이 있나 — 편집 모드와 무관하게 화면에 반영할지를 이것으로 가른다 */
+function editHas(day){ const e=editGet()[day]; return !!(e&&Object.keys(e).length); }
+function editAny(){ const e=editGet(); return Object.keys(e).some(function(d){ return editHas(d); }); }
 function editOf(day,idx){ const e=editGet(); return (e[day]&&e[day][idx])||{}; }
 function editSet(day,idx,key,val){
   const e=editGet();
@@ -4445,12 +4462,27 @@ function editSet(day,idx,key,val){
 }
 /* 편집을 얹은 그날 정차지. 원본 D 는 건드리지 않는다.
    장소를 바꾸면 이름과 좌표가 함께 달라져야 하므로, stops 를 읽는 곳은 전부 이걸 쓴다. */
+/* 옛 장소의 것이라 장소를 바꾸면 함께 떨어져야 하는 항목들.
+   이름만 새것이고 본문과 사진이 옛것이면 가족이 그 자리에서 엉뚱한 곳을 읽는다.
+   ty(정차지의 성격)와 t(배포판 시각)는 그 자리의 것이므로 남긴다. */
+const 옛설명=['sub','feat','design','see','steps','warn','note','img','imgAlt','cap','bd'];
 function stopsOf(day){
   return D[day].stops.map(function(s,i){
     const e=editOf(day,i);
     if(!e.place) return s;
-    return Object.assign({}, s, { n:e.place.n, ll:e.place.ll });
+    const 새것=Object.assign({}, s, { n:e.place.n, ll:e.place.ll });
+    옛설명.forEach(function(k){ delete 새것[k]; });
+    return Object.assign(새것, placeInfo(e.place.n));
   });
+}
+/* 바꾼 곳이 여행지·맛집 목록에 있으면 그 목록에 적힌 것만 얹는다.
+   목록에 없으면(직접 입력한 이름) 이름만 둔다 — 지어내지 않는다. */
+function placeInfo(이름){
+  const s=SPOT.find(function(x){ return x.n===이름; });
+  if(s){ const 곁=[s.theme,s.open].filter(Boolean).join(' · '); return 곁?{sub:곁}:{}; }
+  const f=FOOD.find(function(x){ return x.n===이름; });
+  if(f){ const o={}; if(f.main) o.sub=f.main; if(f.note) o.note=f.note; return o; }
+  return {};
 }
 /* 장소 바꾸기 — 어느 줄이 열려 있고 무엇을 찾는 중인가. 편집 중에만 쓴다. */
 let pickSi=-1, pickQ='';
@@ -4555,7 +4587,7 @@ async function warmRides(day){
       if(전!==후) 바뀜=true;
     }
   }
-  if(바뀜&&editOn&&curDay===day) render(day);
+  if(바뀜&&curDay===day&&(editOn||editHas(day))) render(day);
 }
 /* 키가 있으면 실제 소요시간, 없으면 입력칸. 키는 화면에도 코드에도 남기지 않는다. */
 function ekeySync(){
@@ -4571,6 +4603,16 @@ document.getElementById('ekeysave').addEventListener('click',function(){
   ekeySync();
   warmRides(curDay);
 });
+/* 저장된 편집이 있으면 범례의 # 을 조금 진하게 한다.
+   ①로 편집이 늘 반영되므로, 실수로 눌러 무언가 바꾸면 되돌릴 입구가 이것뿐이다.
+   폭이 달라지면 좁은 화면에서 범례가 두 줄이 되므로 색과 설명만 바꾼다. */
+function hashSync(){
+  const h=document.getElementById('editkey');
+  if(!h) return;
+  const 있음=editAny();
+  h.classList.toggle('on',있음);
+  h.title=있음?'일정 편집 — 바꾼 일정이 적용 중입니다':'일정 편집';
+}
 function setEdit(on){
   editOn=!!on;
   pickSi=-1;
