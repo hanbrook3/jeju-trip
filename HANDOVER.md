@@ -201,7 +201,22 @@ curl -sS -o /tmp/live.html -w "%{http_code} %{size_download}\n" -H 'Cache-Contro
 현장에서 확대해 볼 때 쓰는 것이라 실사용에는 걸리지 않는다.
 
 **타일을 붙인 직후에는 화면 범위를 덜 재어 두 장만 요청하고 나머지가 빈 채로 남는다.**
-`mountTiles` 끝에서 한 박자 뒤 `invalidateSize()` + `redraw()` 로 다시 재게 해 두었다.
+`mountTiles` 끝에서 한 박자 뒤 `invalidateSize()` + `_resetView()` 로 다시 재게 해 두었다.
+
+### ⚠ 타일 레이어에 `redraw()` 를 쓰지 말 것 (2026-08-30)
+
+Leaflet 의 `redraw()` 는 `_tileZoom` 을 `_clampZoom(getZoom())` 으로 잡는데 **반올림을 하지
+않는다.** 이 지도는 `zoomSnap:.25` 라 줌이 **8.75 같은 소수**일 수 있고, 그러면 타일 주소가
+`/8.75/435/205.png` 가 되어 **어느 서버도 줄 수 없다.** 404 가 쌓여 폴백이 잘못 일어나고
+끝내 **지도 배경이 통째로 사라진다.**
+
+`_resetView()` 는 `_setView` 를 거치므로 `Math.round` 를 타 정수 줌이 보장된다.
+
+**재현 순서** — 확대해 둔 상태에서 ① 화면 폭이 바뀌고 ② `섬 전체` 를 누르면 줌이 8.75 가
+되며 ③ 화면 폭이 또 바뀌면 굳는다. 실제로는 **폰을 가로세로로 돌릴 때** 일어난다.
+`map.on('resize')` 와 `mountTiles` 두 곳에 있던 `redraw()` 가 방아쇠였다.
+
+확인하려면 `tileLyr._tileZoom` 이 정수인지 본다. 소수면 `tileLyr._resetView()` 로 복구된다.
 
 ### 인앱 브라우저를 안 거치게 해 두었다 (2026-08-28)
 

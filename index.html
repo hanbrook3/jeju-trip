@@ -2307,8 +2307,14 @@ function mountTiles(i){
   try{ map.setMaxZoom(17); }catch(e){}
   tileLyr.addTo(map);
   /* 붙인 직후에는 화면 범위를 덜 재어 **타일 두 장만 요청하고 나머지가 빈 채로 남는다.**
-     지도를 조금만 움직이면 채워지는 것으로 확인했다. 한 박자 뒤에 다시 재게 한다. */
-  setTimeout(function(){ try{ map.invalidateSize(); tileLyr.redraw(); }catch(e){} },0);
+     지도를 조금만 움직이면 채워지는 것으로 확인했다. 한 박자 뒤에 다시 재게 한다.
+
+     **여기서 redraw() 를 쓰면 안 된다.** Leaflet 의 redraw 는 _tileZoom 을
+     _clampZoom(getZoom()) 으로 잡는데 **반올림을 하지 않는다.** zoomSnap 이 .25 라
+     줌이 8.75 같은 소수일 수 있고, 그러면 타일 주소가 /8.75/ 가 되어 **어느 서버도
+     줄 수 없다.** 404 가 쌓여 폴백이 잘못 일어나고 끝내 지도 배경이 사라진다.
+     _resetView() 는 _setView 를 거치므로 Math.round 를 타 정수 줌이 보장된다. */
+  setTimeout(function(){ try{ map.invalidateSize(); if(tileLyr) tileLyr._resetView(); }catch(e){} },0);
 }
 function retryTiles(){
   if(!map) return;
@@ -2370,7 +2376,9 @@ function initMap(){
     routeLyr=L.layerGroup().addTo(map);
     pinLyr=L.layerGroup().addTo(map);
     map.on('zoomend',function(){ syncZoom(); declutter(); redrawRoute(); });
-    map.on('resize',function(){ try{ if(tileLyr) tileLyr.redraw(); }catch(e){} });
+    /* 화면 크기가 바뀌면 타일을 다시 잡게 한다. **redraw() 를 쓰면 안 된다** —
+       반올림을 하지 않아 zoomSnap(.25) 이 만든 소수 줌이 타일 주소에 그대로 들어간다. */
+    map.on('resize',function(){ try{ if(tileLyr) tileLyr._resetView(); }catch(e){} });
     bindBadge();
     map.on('moveend',function(){ declutter(); redrawRoute(); });
     const bb=document.getElementById('build');
