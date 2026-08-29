@@ -842,6 +842,8 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 /* 빼기는 되돌리기 어려우므로 색으로 구분하고 오른쪽 끝에 둔다 */
 .erow .edel{margin-left:auto;color:#B5583C;border-color:#E2C4BD}
 .erow .edel:hover{background:#FBF0ED}
+/* 한 번 더 누르면 뺀다는 상태 — 4초 뒤 저절로 돌아간다 */
+.erow .edel.ask{background:#B5583C;border-color:#B5583C;color:#fff}
 .epick{
   flex:1 0 100%;margin-top:2px;padding:7px 8px;border-radius:6px;
   background:var(--seasoft);border:1px solid var(--line)
@@ -5173,8 +5175,20 @@ document.getElementById('tl').addEventListener('click',function(e){
       return;
     }
     if(e.target.closest('.edel')){
-      const 이름=(stopsOf(curDay).filter(function(x){ return x._k===키; })[0]||{}).n||'이 정차지';
-      if(!confirm(이름+' 을(를) 일정에서 뺍니다. 계속할까요?')) return;
+      const 단추=e.target.closest('.edel');
+      /* **confirm 을 쓰면 안 된다.** 카톡 인앱 브라우저가 대화창을 막는데, null 을 주는
+         것이 아니라 예외를 던져 그 자리에서 코드가 죽는다 — 눌러도 아무 일도 안 일어난다.
+         그래서 두 번 누르게 한다. 처음 누르면 단추가 물어보는 말로 바뀌고 4초 뒤 되돌아간다. */
+      if(단추.dataset.ask!=='1'){
+        단추.dataset.ask='1';
+        단추.textContent='정말 뺄까요?';
+        단추.classList.add('ask');
+        setTimeout(function(){
+          if(!단추.isConnected) return;
+          단추.dataset.ask=''; 단추.textContent='빼기'; 단추.classList.remove('ask');
+        },4000);
+        return;
+      }
       const ord=ordOf(curDay).filter(function(k){ return k!==키; });
       ordSet(curDay,ord);
       /* 뺀 자리의 편집과 실체도 함께 지운다 — 남겨 두면 다시 넣을 때 옛 값이 살아난다 */
@@ -5199,13 +5213,19 @@ document.getElementById('tl').addEventListener('click',function(e){
   const 상자=e.target.closest('.epick');
   if(!상자) return;
   const 키=상자.dataset.k;
-  /* 목록에 없는 곳은 이름만 바꾼다. 좌표를 모르면 이동시간을 못 내므로 원래 것을 지킨다. */
+  /* 목록에 없는 곳은 이름만 바꾼다. 좌표를 모르면 이동시간을 못 내므로 원래 것을 지킨다.
+     **prompt 를 쓰면 안 된다** — 카톡 인앱 브라우저에서 예외를 던져 코드가 죽는다.
+     이미 있는 찾기 칸에 친 글자를 그대로 이름으로 쓴다. 칸이 비어 있으면 거기로 보낸다. */
   if(e.target.closest('.epown')){
+    const 이름=String(pickQ||'').trim();
+    if(!이름){
+      const 칸=상자.querySelector('.eqi');
+      if(칸){ 칸.placeholder='여기에 이름을 적고 다시 누르세요'; try{ 칸.focus(); }catch(x){} }
+      return;
+    }
     const 지금=stopsOf(curDay).filter(function(x){ return x._k===키; })[0]||{};
-    const 이름=(prompt('바꿀 이름을 적으세요 — 좌표는 그대로 둡니다',지금.n||'')||'').trim();
-    if(!이름) return;
     editSet(curDay,키,'place',{n:이름,ll:지금.ll});
-    pickKey=''; render(curDay);
+    pickKey=''; pickQ=''; render(curDay);
     return;
   }
   const 고름=e.target.closest('li[data-p]');
