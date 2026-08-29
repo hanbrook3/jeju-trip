@@ -2342,7 +2342,7 @@ function initMap(){
     poiLyr=L.layerGroup().addTo(map);
     routeLyr=L.layerGroup().addTo(map);
     pinLyr=L.layerGroup().addTo(map);
-    map.on('zoomend',function(){ syncZoom(); declutter(); });
+    map.on('zoomend',function(){ syncZoom(); declutter(); redrawRoute(); });
     map.on('move resize',syncKakao);
     map.on('resize',function(){ try{ if(kmap) kmap.relayout(); }catch(e){} });
     bindBadge();
@@ -2439,16 +2439,85 @@ function segsOf(day,pts){
    색선은 18px 선에 5px 틈인 점선이라 눈에는 실선과 거의 같은데, 구간마다 틈 위치를
    어긋나게 두어 두 구간이 포개져도 서로의 틈으로 아래 색이 비친다.
    겹치는 곳의 대부분이 정확히 같은 좌표라 이렇게 하지 않으면 한 색만 보인다. */
-function paintRoute(구간들){
+/* 차를 대고 걸어 들어가는 곳 — 주차장과 실제 자리가 이만큼 떨어진 정차지에는
+   주차장에서 그곳까지 도보선을 따로 긋는다. 200m 미만은 주차장에서 바로 보이는
+   거리라 선을 그려도 읽히지 않는다.
+   지금 걸리는 곳 — 글라스하우스 709m · 유민미술관 660m · 수월봉 299m ·
+   성산일출봉 215m · 군산오름 205m. */
+const 도보최소=0.2;
+function walksOf(stops){
+  const out=[];
+  (stops||[]).forEach(function(s,k){
+    const 주차=rideLL(s,SPOT);
+    if(!주차||!s.ll) return;
+    const v=km(주차,s.ll);
+    if(v===null||v<도보최소) return;
+    /* 색은 그 정차지에서 이어지는 구간의 것을 쓴다 — 하루의 흐름을 끊지 않는다 */
+    out.push({co:[주차,s.ll],k:Math.max(0,Math.min(k,(stops.length-2)||0))});
+  });
+  return out;
+}
+/* 같은 길을 갔다가 오는 구간 쌍을 찾는다. 60m 안에 든 점이 셋 이상이면 겹친 것으로 본다.
+   구간 배열은 segsOf 가 캐시해 돌려주므로 참조로 기억해 두면 배율이 바뀌어도 다시 세지 않는다. */
+const 겹침캐시=new WeakMap();
+function offsetOf(구간들){
+  if(겹침캐시.has(구간들)) return 겹침캐시.get(구간들);
+  const 밀기={};
+  for(let a=0;a<구간들.length;a++){
+    for(let b=a+1;b<구간들.length;b++){
+      if(구간들[a].length<2||구간들[b].length<2) continue;
+      let 겹=0;
+      for(let i=0;i<구간들[a].length&&겹<3;i++){
+        for(let j=0;j<구간들[b].length;j++){
+          const v=km(구간들[a][i],구간들[b][j]);
+          if(v!==null&&v<0.06){ 겹++; break; }
+        }
+      }
+      if(겹<3) continue;
+      /* 앞 구간을 한쪽으로, 뒤 구간을 반대쪽으로. 이미 정해진 것은 그대로 둔다 */
+      if(밀기[a]===undefined) 밀기[a]=1;
+      if(밀기[b]===undefined) 밀기[b]=-밀기[a];
+    }
+  }
+  겹침캐시.set(구간들,밀기);
+  return 밀기;
+}
+/* 선을 진행 방향의 옆으로 민다. **화면 좌표로 바꿔 밀고 되돌린다** — 좌표를 그대로
+   밀면 확대할수록 간격이 벌어져 실제 도로에서 크게 벗어난다. */
+function offsetSeg(co,px){
+  if(!map||co.length<2||!px) return co;
+  const P=co.map(function(c){ return map.latLngToLayerPoint(L.latLng(c[0],c[1])); });
+  return P.map(function(p,i){
+    const a=P[Math.max(0,i-1)], b=P[Math.min(P.length-1,i+1)];
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+    const q=map.layerPointToLatLng(L.point(p.x-dy/len*px, p.y+dx/len*px));
+    return [q.lat,q.lng];
+  });
+}
+/* 하루 경로를 그린다. **차로 가는 길은 실선, 주차한 뒤 걷는 길만 촘촘한 점선**이고,
+   갔다가 같은 길로 오는 구간은 나란히 띄워 둘 다 보이게 한다.
+   흰 테두리를 전부 먼저 깔고 색선을 전부 나중에 얹는다 — 구간마다 테두리와 색을
+   번갈아 그리면 뒤 구간의 흰 테두리가 앞 구간 색을 덮는다. */
+const 벌림=4;
+function paintRoute(구간들,도보들){
   if(!map||!routeLyr||!구간들||!구간들.length) return;
   const 색=legColors(구간들.length);
-  구간들.forEach(function(co){
+  const 걷기=도보들||[];
+  const 밀기=offsetOf(구간들);
+  const 그릴것=구간들.map(function(co,k){ return offsetSeg(co,(밀기[k]||0)*벌림); });
+  그릴것.forEach(function(co){
     if(co.length>1) L.polyline(co,{interactive:false,color:'#fff',weight:9,opacity:.9,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
   });
-  구간들.forEach(function(co,k){
+  걷기.forEach(function(w){
+    L.polyline(w.co,{interactive:false,color:'#fff',weight:7,opacity:.9,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
+  });
+  그릴것.forEach(function(co,k){
     if(co.length<2) return;
-    L.polyline(co,{interactive:false,color:색[k],weight:4,opacity:.95,lineJoin:'round',lineCap:'round',
-      dashArray:'18 5',dashOffset:String((k*7)%23)}).addTo(routeLyr);
+    L.polyline(co,{interactive:false,color:색[k],weight:4,opacity:.95,lineJoin:'round',lineCap:'round'}).addTo(routeLyr);
+  });
+  걷기.forEach(function(w){
+    L.polyline(w.co,{interactive:false,color:색[w.k],weight:3.2,opacity:.95,lineCap:'butt',
+      dashArray:'2 3'}).addTo(routeLyr);
   });
 }
 /* 편집 내용은 바뀐 값만 저장한다. 정차지 전체를 저장하면
@@ -2503,14 +2572,23 @@ async function rideFetch(a,b){
    키가 있으면 지금 정차지로 다시 받아 덮어 그린다.
    **편집을 내보내 배포할 때는 반드시 다시 굽는다:**
    KAKAO_REST_KEY=<키> node tools/build-paths.js */
-function drawRoute(i,pts){
-  paintRoute(segsOf(i,pts));
-  if(editOn&&naviKey()) liveRoute(i,pts);
+function drawRoute(i,pts,stops){
+  paintRoute(segsOf(i,pts),walksOf(stops));
+  if(editOn&&naviKey()) liveRoute(i,pts,stops);
+}
+/* 배율이 바뀌면 경로만 다시 그린다 — 겹친 선을 화면 기준으로 밀어 두기 때문이다.
+   전체를 다시 그리면 점과 핀까지 새로 만들어 확대할 때마다 화면이 튄다. */
+function redrawRoute(){
+  if(curMode!=='trip'||!map||!routeLyr) return;
+  const items=MAPPTS.trip();
+  if(items.length<2) return;
+  routeLyr.clearLayers();
+  drawRoute(curDay,items.map(function(s){ return rideLL(s,SPOT)||s.ll; }),items);
 }
 /* 편집 중 경로 선. 정차지 조합마다 캐시해 같은 것을 두 번 묻지 않는다.
    구간마다 따로 받는 이유는 build-paths.js 와 같다 — 경유지 한도가 5개다. */
 const liveCache={};
-async function liveRoute(i,pts){
+async function liveRoute(i,pts,stops){
   const key=naviKey();
   if(!key||!pts||pts.length<2) return;
   const k=i+'|'+pts.map(p=>p[0].toFixed(4)+','+p[1].toFixed(4)).join(';');
@@ -2541,7 +2619,7 @@ async function liveRoute(i,pts){
   /* 받아오는 사이에 날짜를 넘겼거나 편집을 닫았으면 그리지 않는다 */
   if(구간들.length&&map&&routeLyr&&curDay===i&&editOn){
     routeLyr.clearLayers();
-    paintRoute(구간들);
+    paintRoute(구간들,walksOf(stops));
   }
 }
 
@@ -2736,7 +2814,7 @@ function drawMapFor(mode){
     if(jeju.length) pts=jeju;
     fitMap(pts);
     syncZoom();
-    if(mode==='trip'&&items.length>1) drawRoute(curDay,items.map(s=>rideLL(s,SPOT)||s.ll));
+    if(mode==='trip'&&items.length>1) drawRoute(curDay,items.map(s=>rideLL(s,SPOT)||s.ll),items);
   }catch(e){}
 }
 /* 지금 보고 있는 탭의 지도를 다시 그린다 */
@@ -2794,15 +2872,28 @@ function staticMap(){
       b+=`<path d="${P(r.p)}" fill="none" stroke="${VEC.road[k]}" stroke-width="${VW[k][1]}" stroke-linecap="round" stroke-linejoin="round"/>`;});
     PLACES.forEach(p=>{b+=`<text x="${X(p[2]).toFixed(1)}" y="${Y(p[1]).toFixed(1)}" text-anchor="middle" font-family="Pretendard,sans-serif" font-size="13" font-weight="600" fill="#8E9BA3" stroke="#F7F6F1" stroke-width="3" paint-order="stroke">${p[0]}</text>`;});
     const d=D[curDay], pts=d.stops.filter(s=>s.ll);
-    /* 지도 위와 같은 규칙 — 구간마다 색이 다르고 점선의 틈 위치가 어긋난다 */
+    /* 지도 위와 같은 규칙 — 차로 가는 길은 실선(겹치면 나란히), 걷는 길만 촘촘한 점선 */
     const 길=pts.map(x=>rideLL(x,SPOT)||x.ll);
     const 구간들=(PATHS[curDay]&&PATHS[curDay].length>1)?segsOf(curDay,길):segsPlain(길);
     if(구간들.length){
       const 색=legColors(구간들.length);
-      const dds=구간들.map(co=>co.length>1
-        ? co.map((c,n)=>(n?'L':'M')+X(c[1]).toFixed(1)+' '+Y(c[0]).toFixed(1)).join(' ') : '');
+      const 걷기=walksOf(pts);
+      const 밀기=offsetOf(구간들);
+      const 그리기=function(co,px){
+        const P=co.map(c=>[X(c[1]),Y(c[0])]);
+        const Q=px?P.map(function(p,i){
+          const a=P[Math.max(0,i-1)], b=P[Math.min(P.length-1,i+1)];
+          const dx=b[0]-a[0], dy=b[1]-a[1], len=Math.hypot(dx,dy)||1;
+          return [p[0]-dy/len*px, p[1]+dx/len*px];
+        }):P;
+        return Q.map((p,n)=>(n?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+      };
+      const dds=구간들.map((co,k)=>co.length>1?그리기(co,(밀기[k]||0)*3.4):'');
+      const wds=걷기.map(w=>그리기(w.co,0));
       dds.forEach(dd=>{ if(dd) b+=`<path d="${dd}" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>`; });
-      dds.forEach((dd,k)=>{ if(dd) b+=`<path d="${dd}" fill="none" stroke="${색[k]}" stroke-width="3.4" stroke-linejoin="round" stroke-dasharray="18 5" stroke-dashoffset="${(k*7)%23}"/>`; });
+      wds.forEach(wd=>{ b+=`<path d="${wd}" fill="none" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>`; });
+      dds.forEach((dd,k)=>{ if(dd) b+=`<path d="${dd}" fill="none" stroke="${색[k]}" stroke-width="3.4" stroke-linejoin="round"/>`; });
+      wds.forEach((wd,i)=>{ b+=`<path d="${wd}" fill="none" stroke="${색[걷기[i].k]}" stroke-width="2.6" stroke-dasharray="2 3"/>`; });
     }
     pts.forEach((x,n)=>{const px=X(x.ll[1]),py=Y(x.ll[0]),fl=px>W*.7,
       f=x.ty==='meal'?'#A9700F':x.ty==='ship'?'#9E3B3B':'#15616D';
