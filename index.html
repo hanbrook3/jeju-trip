@@ -1340,8 +1340,8 @@ summary.fhead .chev{flex:0 0 18px}
 .pin{background:none;border:none}
 /* 동선 위의 진행 방향 화살표. 흰 그림자를 둘러 어떤 배경에서도 읽힌다 */
 .rarrow{background:none;border:none;pointer-events:none}
-.rarrow svg{display:block;width:15px;height:15px;
-  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
+.rarrow svg{display:block;width:17px;height:17px;
+  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.3))}
 /* 물방울 핀 — 원 하나만 찍으면 어디를 가리키는지 알 수 없어 지도에 묻힌다.
    원에 삼각형을 덧대는 방식은 이음매가 드러나 어설프다. **한 붓으로 그린 SVG 경로**로
    위는 둥글고 아래는 뾰족하게 이어지게 하고, 그 뾰족한 끝이 실제 좌표를 가리킨다
@@ -2606,12 +2606,16 @@ function drawArrows(co,색,밀){
        만드는데, 위쪽에 그려지는 화살표는 y 가 작아 최종값이 음수가 되고 그러면 지도 뒤로
        숨어 아예 보이지 않는다(빨간 테두리를 씌워도 안 보였다). */
     L.marker(map.layerPointToLatLng(p),{interactive:false,keyboard:false,
-      /* 선 색으로 칠하고 흰 테두리를 둘러 어떤 배경에서도 또렷하게 한다. 선 옆에
-         있으므로 선과 같은 색이어야 어느 동선의 방향인지 한눈에 짝지어진다. */
-      icon:L.divIcon({className:'rarrow',iconSize:[15,15],iconAnchor:[7.5,7.5],
+      /* **축에 꺾쇠 촉을 붙인 → 모양.** 꽉 찬 삼각형은 어느 쪽이 앞인지 한눈에
+         들어오지 않는다. 같은 길을 두 번 그리는데 먼저 흰색으로 굵게, 그 위에
+         선 색으로 가늘게 얹어 흰 테두리를 만든다 — 선 옆에 있으므로 선과 같은
+         색이어야 어느 동선의 방향인지 짝지어진다. */
+      icon:L.divIcon({className:'rarrow',iconSize:[17,17],iconAnchor:[8.5,8.5],
         html:'<svg viewBox="0 0 16 16" style="transform:rotate('+각+'deg)">'
-          +'<path d="M3.4 2.6L13.2 8L3.4 13.4Z" fill="'+색+'" stroke="#fff"'
-          +' stroke-width="1.6" stroke-linejoin="round"/></svg>'
+          +'<path d="M2.4 8H11.9M7.5 4.1L12.4 8L7.5 11.9" fill="none" stroke="#fff"'
+          +' stroke-width="4.4" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="12"/>'
+          +'<path d="M2.4 8H11.9M7.5 4.1L12.4 8L7.5 11.9" fill="none" stroke="'+색+'"'
+          +' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="12"/></svg>'
       })}).addTo(routeLyr);
     찍음++;
   }
