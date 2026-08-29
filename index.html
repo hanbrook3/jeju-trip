@@ -822,13 +822,26 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .eride{
   padding:3px 14px;font-size:11px;color:var(--faint)
 }
-/* 장소 바꾸기 — 편집 중에만 나온다 */
-.erow .epb{
+/* 편집 버튼 묶음 — 장소 바꾸기 · 위아래 · 넣기 · 빼기. 편집 중에만 나온다 */
+.erow .ebtns{display:flex;flex-wrap:wrap;gap:5px;flex:1 0 100%;margin-top:2px}
+.erow .ebtns button{
   appearance:none;cursor:pointer;font-family:inherit;font-size:11.5px;
   padding:3px 8px;border-radius:5px;border:1px solid var(--line);
   background:#fff;color:var(--ink2)
 }
+.erow .ebtns button:disabled{opacity:.35;cursor:default}
 .erow .epb[aria-expanded=true]{background:var(--sea);border-color:var(--sea);color:#fff}
+/* 위아래는 자주 눌러야 하므로 손가락이 닿을 만큼만 넓힌다 */
+.erow .eup,.erow .edn{min-width:30px;font-size:13px;line-height:1.1}
+/* 끌기 손잡이 — **touch-action 을 여기에만 끈다.** 카드 전체에 끄면 목록을 스크롤할 수
+   없다. 끌 수 있는 곳이 손잡이뿐이라는 것도 손가락에 알려 준다. */
+.erow .egrip{min-width:32px;cursor:grab;touch-action:none;letter-spacing:-.08em;color:var(--faint)}
+.erow .egrip:active{cursor:grabbing}
+/* 끌리는 동안 — 반투명으로 들어 올리고, 포인터가 아래 카드를 찾을 수 있게 비켜 준다 */
+.stop.dragging{opacity:.55;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+/* 빼기는 되돌리기 어려우므로 색으로 구분하고 오른쪽 끝에 둔다 */
+.erow .edel{margin-left:auto;color:#B5583C;border-color:#E2C4BD}
+.erow .edel:hover{background:#FBF0ED}
 .epick{
   flex:1 0 100%;margin-top:2px;padding:7px 8px;border-radius:6px;
   background:var(--seasoft);border:1px solid var(--line)
@@ -4182,25 +4195,35 @@ function detail(s){
   if(s.note) h+=`<div class="note" style="margin-top:14px">${apText(s.note)}</div>`;
   return h+'</div>';
 }
-/* 편집 중일 때 카드 안에 붙는 줄. si 는 전체 정차지 인덱스(핀 번호가 아니다) */
-function editRow(day,si,s){
-  const e=editOf(day,si);
+/* 편집 중일 때 카드 안에 붙는 줄.
+   **키(＿k)와 자리(화면 순서)는 다르다.** 편집 값은 키로 찾고, 계산 결과(window.__plan)는
+   화면 순서 배열이므로 자리로 찾는다. 이걸 섞으면 순서를 바꾼 순간 값이 어긋난다. */
+function editRow(day,키,s,자리){
+  const e=editOf(day,키);
   const p=window.__plan||{};
-  const 도착=(p.arrive&&p.arrive[si])||s.t;
-  const 머뭄=(p.stay&&p.stay[si])!==undefined?p.stay[si]:60;
-  const 경고=(window.__warn&&window.__warn[si])||[];
-  return '<div class="erow" data-si="'+si+'">'
+  const 도착=(p.arrive&&p.arrive[자리])||s.t;
+  const 머뭄=(p.stay&&p.stay[자리])!==undefined?p.stay[자리]:60;
+  const 경고=(window.__warn&&window.__warn[자리])||[];
+  const 끝=ordOf(day).length-1;
+  return '<div class="erow" data-k="'+pickEsc(키)+'" data-at="'+자리+'">'
     +'<label>도착 <input type="time" class="et" value="'+도착+'"></label>'
     +'<label>머무는 시간 <input type="number" class="es" min="0" step="5" value="'+머뭄+'">분</label>'
     +'<label class="ef"><input type="checkbox" class="ex"'+((e.fix||s.ty==='ship')?' checked':'')+'> 시각 고정</label>'
-    +'<button type="button" class="epb" aria-expanded="'+(pickSi===si)+'">장소 바꾸기</button>'
+    +'<div class="ebtns">'
+    +'<button type="button" class="egrip" title="끌어서 순서 옮기기" aria-label="끌어서 순서 옮기기">⠿</button>'
+    +'<button type="button" class="epb" aria-expanded="'+(pickKey===키)+'">장소 바꾸기</button>'
+    +'<button type="button" class="eup"'+(자리===0?' disabled':'')+' title="위로">↑</button>'
+    +'<button type="button" class="edn"'+(자리===끝?' disabled':'')+' title="아래로">↓</button>'
+    +'<button type="button" class="eadd">아래에 넣기</button>'
+    +'<button type="button" class="edel">빼기</button>'
+    +'</div>'
     +(경고.length?'<div class="ewarn">'+경고.map(function(w){return '※ '+w;}).join('<br>')+'</div>':'')
-    +(pickSi===si?pickBox(day,si):'')
+    +(pickKey===키?pickBox(day,키):'')
     +'</div>'
     +(function(){
-       const r=(p.rides&&p.rides[si]);
+       const r=(p.rides&&p.rides[자리]);
        if(r===null||r===undefined) return '';
-       const 거리=km(s.ll,(stopsOf(day)[si+1]||{}).ll);
+       const 거리=km(s.ll,(stopsOf(day)[자리+1]||{}).ll);
        return '<div class="eride">↓ 이동 '+r+'분'+(거리?' · '+거리.toFixed(1)+'km':'')+'</div>';
      })();
 }
@@ -4208,7 +4231,7 @@ function render(i){
   const d=D[i];
   document.getElementById('dTitle').textContent=d.t;
   document.getElementById('dSub').textContent=d.s;
-  if(i!==curDay) pickSi=-1;
+  if(i!==curDay) pickKey='';
   /* 저장된 편집은 편집 모드가 아닐 때도 화면에 반영한다 — 이 기능은 여행 중 대응이
      목적이라, 바꾼 일정을 보면서 다녀야 하기 때문이다. 고친 것이 없는 날은 계산이
      배포판과 똑같이 나오므로 건너뛴다. 경고는 편집 화면에서만 쓴다. */
@@ -4250,7 +4273,7 @@ function render(i){
     return `<details class="stop ${s.ty}"${has?'':' data-x'}${mk}${editOn?' open':''}>
       <summary class="head"><span class="tm">${apChip(때)}</span>
       <span class="ttl"><h3>${k>=0?`<b class="pnum">${k+1}</b>`:''}${s.n}</h3>${s.sub?`<p>${apText(s.sub)}</p>`:''}</span>
-      ${has?CH:'<span></span>'}</summary>${editOn?editRow(i,si,s):(has?detail(s):'')}</details>`;}).join('');
+      ${has?CH:'<span></span>'}</summary>${editOn?editRow(i,s._k,s,si):(has?detail(s):'')}</details>`;}).join('');
   tl.querySelectorAll('details[data-x]').forEach(x=>x.querySelector('summary').style.cursor='default');
   if(editOn) tl.querySelectorAll('summary.head').forEach(x=>x.addEventListener('click',ev=>ev.preventDefault()));
   curDay=i;
@@ -4827,12 +4850,43 @@ function editGet(){ if(editData===null) editData=editLoad()||{}; return editData
 /* 그날에 저장된 편집이 있나 — 편집 모드와 무관하게 화면에 반영할지를 이것으로 가른다 */
 function editHas(day){ const e=editGet()[day]; return !!(e&&Object.keys(e).length); }
 function editAny(){ const e=editGet(); return Object.keys(e).some(function(d){ return editHas(d); }); }
+/* 편집 키(idx)는 **화면 순서가 아니라 정차지의 이름표**다.
+   배포판 정차지는 '0' '1' … (배포판 인덱스), 새로 넣은 것은 '+1' '+2' … 이다.
+   순서는 ord 가, 새 정차지의 실체는 new 가 따로 들고 있다. 그래야 순서를 바꾸거나
+   중간에 하나를 빼도 나머지의 편집이 딸려 어긋나지 않는다. */
 function editOf(day,idx){ const e=editGet(); return (e[day]&&e[day][idx])||{}; }
 function editSet(day,idx,key,val){
   const e=editGet();
   if(!e[day]) e[day]={};
   if(!e[day][idx]) e[day][idx]={};
   e[day][idx][key]=val;
+  editSave(e);
+}
+/* 그날의 화면 순서. 손댄 적이 없으면 배포판 그대로다. */
+function ordOf(day){
+  const e=editGet()[day];
+  if(e&&e.ord&&e.ord.length) return e.ord.slice();
+  return D[day].stops.map(function(_,i){ return String(i); });
+}
+function ordSet(day,ord){
+  const e=editGet();
+  if(!e[day]) e[day]={};
+  e[day].ord=ord.slice();
+  editSave(e);
+}
+/* 새로 넣은 정차지의 실체. 키는 '+1' 부터 그날 안에서만 센다. */
+function newOf(day){ const e=editGet()[day]; return (e&&e.신규)||{}; }
+function newKey(day){
+  const 있는것=newOf(day);
+  let n=1;
+  while(있는것['+'+n]) n++;
+  return '+'+n;
+}
+function newSet(day,키,값){
+  const e=editGet();
+  if(!e[day]) e[day]={};
+  if(!e[day].신규) e[day].신규={};
+  e[day].신규[키]=값;
   editSave(e);
 }
 /* 편집을 얹은 그날 정차지. 원본 D 는 건드리지 않는다.
@@ -4842,13 +4896,28 @@ function editSet(day,idx,key,val){
    ty(정차지의 성격)와 t(배포판 시각)는 그 자리의 것이므로 남긴다. */
 const 옛설명=['sub','feat','design','see','steps','warn','note','img','imgAlt','cap','bd'];
 function stopsOf(day){
-  return D[day].stops.map(function(s,i){
-    const e=editOf(day,i);
-    if(!e.place) return s;
-    const 새것=Object.assign({}, s, { n:e.place.n, ll:e.place.ll });
-    옛설명.forEach(function(k){ delete 새것[k]; });
-    return Object.assign(새것, placeInfo(e.place.n));
-  });
+  const 신규=newOf(day), 원본=D[day].stops;
+  return ordOf(day).map(function(키){
+    let 바탕;
+    if(키.charAt(0)==='+'){
+      const x=신규[키];
+      if(!x) return null;
+      /* 새 정차지는 이름과 좌표만 있다. 성격은 spot, 시각은 계산이 채운다. */
+      바탕=Object.assign({ty:'spot',t:'12:00'},x,placeInfo(x.n));
+    }else{
+      바탕=원본[+키];
+      if(!바탕) return null;
+    }
+    const e=editOf(day,키);
+    let s=바탕;
+    if(e.place){
+      s=Object.assign({}, 바탕, { n:e.place.n, ll:e.place.ll });
+      옛설명.forEach(function(k){ delete s[k]; });
+      s=Object.assign(s, placeInfo(e.place.n));
+    }
+    /* **_k 는 편집 키다.** 화면 순서(인덱스)로 편집을 찾으면 순서를 바꾼 순간 어긋난다. */
+    return Object.assign({}, s, { _k:키 });
+  }).filter(Boolean);
 }
 /* 바꾼 곳이 여행지·맛집 목록에 있으면 그 목록에 적힌 것만 얹는다.
    목록에 없으면(직접 입력한 이름) 이름만 둔다 — 지어내지 않는다. */
@@ -4859,8 +4928,9 @@ function placeInfo(이름){
   if(f){ const o={}; if(f.main) o.sub=f.main; if(f.note) o.note=f.note; return o; }
   return {};
 }
-/* 장소 바꾸기 — 어느 줄이 열려 있고 무엇을 찾는 중인가. 편집 중에만 쓴다. */
-let pickSi=-1, pickQ='';
+/* 장소 바꾸기 — 어느 줄이 열려 있고 무엇을 찾는 중인가. 편집 중에만 쓴다.
+   여는 줄은 화면 자리가 아니라 **편집 키**로 기억한다 — 순서가 바뀌어도 따라가야 한다. */
+let pickKey='', pickQ='';
 function pickEsc(t){
   return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -4869,9 +4939,9 @@ function pickEsc(t){
    그날 정기 휴무인 곳은 감추지 않고 못 고르게만 한다 —
    없는 것과 그날만 못 가는 것은 다르기 때문이다.
    맛집에는 off 가 없어 이 검사를 건너뛴다. */
-function pickList(day,si,q){
+function pickList(day,키,q){
   const 요일=D[day].dw.split(' ')[0];
-  const 기준=(stopsOf(day)[si]||{}).ll;
+  const 기준=((stopsOf(day).filter(function(x){ return x._k===키; })[0])||{}).ll;
   const 말=String(q||'').trim().toLowerCase();
   const 것들=[];
   SPOT.forEach(function(x){
@@ -4892,8 +4962,8 @@ function pickList(day,si,q){
   }).slice(0,20);
 }
 /* 후보 줄들. 검색어를 고칠 때는 이것만 갈아 끼운다 — 전체를 다시 그리면 글자를 못 친다. */
-function pickItems(day,si,q){
-  const 것들=pickList(day,si,q);
+function pickItems(day,키,q){
+  const 것들=pickList(day,키,q);
   if(!것들.length) return '<li class="enone">찾는 이름이 없습니다</li>';
   return 것들.map(function(x,n){
     const 곁=[x.갈래,x.곁,x.막힘].filter(Boolean).join(' · ');
@@ -4901,30 +4971,37 @@ function pickItems(day,si,q){
       +'<span>'+pickEsc(x.n)+'</span><span class="ek">'+pickEsc(곁)+'</span></li>';
   }).join('');
 }
-function pickBox(day,si){
-  return '<div class="epick" data-si="'+si+'">'
+function pickBox(day,키){
+  return '<div class="epick" data-k="'+pickEsc(키)+'">'
     +'<div class="eq">'
     +'<input type="text" class="eqi" placeholder="찾을 이름" autocomplete="off" spellcheck="false" value="'+pickEsc(pickQ)+'">'
     +'<button type="button" class="epown">직접 입력</button></div>'
-    +'<ul>'+pickItems(day,si,pickQ)+'</ul></div>';
+    +'<ul>'+pickItems(day,키,pickQ)+'</ul></div>';
 }
 /* 하루치 계산 결과를 낸다. 이동시간은 캐시에 있으면 실제값, 없으면 추정값을 쓴다 */
 function dayPlan(day){
   const stops=stopsOf(day), 배포=D[day].stops;
   const rides=[], 배포이동=[];
-  for(let i=0;i<stops.length-1;i++){
-    rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
-    배포이동.push(rideNow(rideLL(배포[i],SPOT),rideLL(배포[i+1],SPOT)));
-  }
+  for(let i=0;i<stops.length-1;i++) rides.push(rideNow(rideLL(stops[i],SPOT),rideLL(stops[i+1],SPOT)));
+  /* 배포판 이동은 배포판 길이대로 따로 센다 — 넣거나 빼면 두 목록의 길이가 달라진다 */
+  for(let i=0;i<배포.length-1;i++) 배포이동.push(rideNow(rideLL(배포[i],SPOT),rideLL(배포[i+1],SPOT)));
   /* 머무는 시간은 배포판 일정에서 역산한다 — 지금 이동시간으로 역산하면
      장소를 바꿔 길이 멀어진 만큼 머무는 시간이 줄어들어 뒤 일정이 밀리지 않는다.
-     멀어진 것은 길이지 머무는 시간이 아니다. */
-  const stay=fillStay(배포,function(i){ return 배포이동[i]; }).map(function(v,i){
-    const e=editOf(day,i); return e.stay!==undefined ? e.stay : v;
+     멀어진 것은 길이지 머무는 시간이 아니다.
+     **역산값은 편집 키로 찾는다.** 순서를 바꿔도 그 정차지의 체류시간이 따라간다 —
+     머무는 시간은 장소의 속성이지 순서의 속성이 아니기 때문이다.
+     새로 넣은 곳은 배포판에 짝이 없으므로 기본값으로 시작한다. */
+  const 배포stay=fillStay(배포,function(i){ return 배포이동[i]; });
+  const stay=stops.map(function(s){
+    const e=editOf(day,s._k);
+    if(e.stay!==undefined) return e.stay;
+    if(s._k.charAt(0)==='+') return 60;
+    const v=배포stay[+s._k];
+    return v===undefined?60:v;
   });
   const pin={};
   stops.forEach(function(s,i){
-    const e=editOf(day,i);
+    const e=editOf(day,s._k);
     if(e.t) pin[i]=e.t;
     else if(i===0) pin[0]=s.t;
   });
@@ -4940,7 +5017,7 @@ function dayWarns(day){
     const 지금=p.arrive[i], out=[];
     if(s.ty==='meal'){ const w=mealWarn(s.t,지금); if(w) out.push(w); }
     const sw=spotWarn(by[s.n],요일,지금); if(sw) out.push(sw);
-    const e=editOf(day,i);
+    const e=editOf(day,s._k);
     if(e.fix||s.ty==='ship'){ const fw=fixWarn(s.n,e.t||s.t,지금); if(fw) out.push(fw); }
     return out;
   });
@@ -4990,7 +5067,7 @@ function hashSync(){
 }
 function setEdit(on){
   editOn=!!on;
-  pickSi=-1;
+  pickKey='';
   const bar=document.getElementById('editbar');
   if(bar) bar.hidden=!editOn;
   ekeySync();
@@ -5007,23 +5084,43 @@ document.getElementById('editreset').addEventListener('click',function(){
    사람이 읽고 파일에 옮길 수 있어야 하므로 정차지 이름을 주석으로 붙인다.
    고친 정차지만 내면 뒤로 밀린 정차지가 빠져 붙여도 편집한 대로 나오지 않는다.
    그래서 계산된 시각이 배포판과 다른 정차지는 모두 낸다. */
+/* 편집 결과를 사람이 파일에 옮길 수 있는 형태로 낸다.
+   **순서를 바꾸거나 넣고 뺀 날은 조각만으로 옮길 수 없다.** 그때는 어떤 순서로
+   재배열할지를 먼저 적고, 그다음 각 정차지의 값을 낸다. 사진(base64)이 들어 있어
+   stops 를 통째로 출력할 수는 없기 때문이다. */
 function editCode(){
   const e=editGet(), 줄=[];
+  const 따옴=function(v){ return "'"+String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'"; };
   Object.keys(e).sort(function(a,b){return a-b;}).forEach(function(day){
-    const p=dayPlan(+day);
-    stopsOf(+day).forEach(function(s,i){
-      const c=(e[day]&&e[day][i])||{};
-      if(p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place) return;
-      const 조각=["t:'"+p.arrive[i]+"'"];
-      if(c.place){
-        /* 직접 입력한 이름에 따옴표가 섞이면 붙여 넣을 코드가 깨진다 */
-        조각.push("n:'"+String(c.place.n).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'");
-        if(c.place.ll) 조각.push('ll:['+c.place.ll[0]+','+c.place.ll[1]+']');
+    const d=+day;
+    if(!e[day]||!Object.keys(e[day]).length) return;
+    const p=dayPlan(d), stops=stopsOf(d), 원본=D[d].stops;
+    const 기본=원본.map(function(_,i){ return String(i); });
+    const 지금=ordOf(d);
+    const 순서바뀜=지금.join(',')!==기본.join(',');
+    if(순서바뀜){
+      줄.push('  /* '+(d+1)+'일차 — stops 를 이 순서로 다시 늘어놓으세요 */');
+      줄.push('  /*   '+지금.map(function(k,i){
+        return k.charAt(0)==='+' ? ('[새로 넣음] '+((stops[i]||{}).n||''))
+                                 : (k+'번 '+((원본[+k]||{}).n||''));
+      }).join('  →  ')+' */');
+      기본.forEach(function(k){
+        if(지금.indexOf(k)<0) 줄.push('  /*   [뺌] '+k+'번 '+((원본[+k]||{}).n||'')+' */');
+      });
+    }
+    stops.forEach(function(s,i){
+      const c=editOf(d,s._k), 새것=s._k.charAt(0)==='+';
+      if(!새것&&!순서바뀜&&p.arrive[i]===s.t&&c.stay===undefined&&!c.fix&&!c.place) return;
+      const 조각=["t:"+따옴(p.arrive[i])];
+      if(새것||c.place){
+        조각.push('n:'+따옴(s.n));
+        if(s.ll) 조각.push('ll:['+s.ll[0]+','+s.ll[1]+']');
       }
+      if(새것) 조각.push('ty:'+따옴(s.ty||'spot'));
       if(c.stay!==undefined) 조각.push('stay:'+c.stay);
       if(c.fix) 조각.push('fix:true');
-      /* 붙일 자리를 찾아야 하므로 주석에는 배포판 이름을 쓴다 */
-      줄.push('  /* '+(+day+1)+'일차 '+D[+day].stops[i].n+' */ '+조각.join(', '));
+      const 라벨=새것 ? '[새로 넣음]' : ((원본[+s._k]||{}).n||'');
+      줄.push('  /* '+(d+1)+'일차 '+라벨+' */ '+조각.join(', '));
     });
   });
   return 줄.length ? 줄.join('\n') : '(고친 것이 없습니다)';
@@ -5040,48 +5137,139 @@ document.getElementById('editcopy').addEventListener('click',function(){
 document.getElementById('tl').addEventListener('change',function(e){
   if(!editOn) return;
   const row=e.target.closest('.erow'); if(!row) return;
-  const si=+row.dataset.si;
-  if(e.target.classList.contains('et')) editSet(curDay,si,'t',e.target.value);
-  else if(e.target.classList.contains('es')) editSet(curDay,si,'stay',Math.max(0,+e.target.value||0));
-  else if(e.target.classList.contains('ex')) editSet(curDay,si,'fix',e.target.checked);
+  const 키=row.dataset.k;
+  if(e.target.classList.contains('et')) editSet(curDay,키,'t',e.target.value);
+  else if(e.target.classList.contains('es')) editSet(curDay,키,'stay',Math.max(0,+e.target.value||0));
+  else if(e.target.classList.contains('ex')) editSet(curDay,키,'fix',e.target.checked);
   else return;
   render(curDay);
 });
 /* 장소 바꾸기 — 버튼으로 열고, 하나를 고르거나 다시 누르면 닫힌다 */
 document.getElementById('tl').addEventListener('click',function(e){
   if(!editOn) return;
+  const 줄=e.target.closest('.erow');
+  /* 순서 · 넣기 · 빼기 */
+  if(줄){
+    const 키=줄.dataset.k, 자리=+줄.dataset.at;
+    if(e.target.closest('.eup')||e.target.closest('.edn')){
+      const 위로=!!e.target.closest('.eup');
+      const ord=ordOf(curDay), 옆=자리+(위로?-1:1);
+      if(옆<0||옆>=ord.length) return;
+      const 뽑=ord[자리]; ord[자리]=ord[옆]; ord[옆]=뽑;
+      ordSet(curDay,ord);
+      render(curDay); warmRides(curDay);
+      return;
+    }
+    if(e.target.closest('.eadd')){
+      /* 자리 아래에 빈 정차지를 넣고 바로 장소를 고르게 한다.
+         좌표가 없는 동안에는 지도에도 안 나오고 이동시간 계산에서도 빠진다. */
+      const 키새=newKey(curDay);
+      newSet(curDay,키새,{n:'새 정차지'});
+      const ord=ordOf(curDay);
+      ord.splice(자리+1,0,키새);
+      ordSet(curDay,ord);
+      pickKey=키새; pickQ='';
+      render(curDay);
+      return;
+    }
+    if(e.target.closest('.edel')){
+      const 이름=(stopsOf(curDay).filter(function(x){ return x._k===키; })[0]||{}).n||'이 정차지';
+      if(!confirm(이름+' 을(를) 일정에서 뺍니다. 계속할까요?')) return;
+      const ord=ordOf(curDay).filter(function(k){ return k!==키; });
+      ordSet(curDay,ord);
+      /* 뺀 자리의 편집과 실체도 함께 지운다 — 남겨 두면 다시 넣을 때 옛 값이 살아난다 */
+      const 전부=editGet();
+      if(전부[curDay]){
+        delete 전부[curDay][키];
+        if(전부[curDay].신규) delete 전부[curDay].신규[키];
+      }
+      editSave(전부);
+      if(pickKey===키) pickKey='';
+      render(curDay); warmRides(curDay);
+      return;
+    }
+  }
   const 여닫기=e.target.closest('.epb');
   if(여닫기){
-    const si=+여닫기.closest('.erow').dataset.si;
-    pickSi=(pickSi===si)?-1:si; pickQ='';
+    const 키=여닫기.closest('.erow').dataset.k;
+    pickKey=(pickKey===키)?'':키; pickQ='';
     render(curDay);
     return;
   }
   const 상자=e.target.closest('.epick');
   if(!상자) return;
-  const si=+상자.dataset.si;
+  const 키=상자.dataset.k;
   /* 목록에 없는 곳은 이름만 바꾼다. 좌표를 모르면 이동시간을 못 내므로 원래 것을 지킨다. */
   if(e.target.closest('.epown')){
-    const 지금=stopsOf(curDay)[si]||{};
+    const 지금=stopsOf(curDay).filter(function(x){ return x._k===키; })[0]||{};
     const 이름=(prompt('바꿀 이름을 적으세요 — 좌표는 그대로 둡니다',지금.n||'')||'').trim();
     if(!이름) return;
-    editSet(curDay,si,'place',{n:이름,ll:지금.ll});
-    pickSi=-1; render(curDay);
+    editSet(curDay,키,'place',{n:이름,ll:지금.ll});
+    pickKey=''; render(curDay);
     return;
   }
   const 고름=e.target.closest('li[data-p]');
   if(!고름) return;
-  const x=pickList(curDay,si,pickQ)[+고름.dataset.p];
-  if(x) editSet(curDay,si,'place',{n:x.n,ll:x.ll});
-  pickSi=-1; render(curDay);
+  const x=pickList(curDay,키,pickQ)[+고름.dataset.p];
+  if(x) editSet(curDay,키,'place',{n:x.n,ll:x.ll});
+  pickKey=''; render(curDay); warmRides(curDay);
 });
+/* 끌어서 순서 옮기기. 손잡이(⠿)를 잡아야만 시작한다 — 카드 아무 데서나 끌리면
+   목록을 스크롤할 수 없다.
+   끄는 동안에는 DOM 만 옮겨 보여 주고, 손을 뗄 때 그 순서를 ord 로 확정한다.
+   중간에 render 를 부르면 끌던 카드가 사라져 손이 놓친다. */
+let 끌기={키:null,카드:null};
+tl.addEventListener('pointerdown',function(e){
+  if(!editOn) return;
+  const 손잡이=e.target.closest('.egrip'); if(!손잡이) return;
+  const 줄=손잡이.closest('.erow'), 카드=손잡이.closest('details.stop');
+  if(!줄||!카드) return;
+  끌기={키:줄.dataset.k,카드:카드};
+  카드.classList.add('dragging');
+  try{ 손잡이.setPointerCapture(e.pointerId); }catch(x){}
+  e.preventDefault();
+});
+tl.addEventListener('pointermove',function(e){
+  if(!끌기.키) return;
+  e.preventDefault();
+  /* **elementFromPoint 를 쓰지 말 것.** 지도가 화면 위쪽에 떠 있어 카드를 가리므로
+     범례나 지도가 잡힌다. 세로로 늘어선 목록이니 **카드의 위아래 범위와 포인터 y 만**
+     견주면 무엇이 덮여 있든 옳게 찾는다. */
+  const 목록=[].slice.call(tl.querySelectorAll('details.stop'));
+  let 위=null;
+  for(let i=0;i<목록.length;i++){
+    if(목록[i]===끌기.카드) continue;
+    const r=목록[i].getBoundingClientRect();
+    if(e.clientY>=r.top&&e.clientY<=r.bottom){ 위=목록[i]; break; }
+  }
+  if(위){
+    const a=목록.indexOf(끌기.카드), b=목록.indexOf(위);
+    if(a>=0&&b>=0){ if(a<b) 위.after(끌기.카드); else 위.before(끌기.카드); }
+  }
+  /* 화면 위아래 끝에 다다르면 목록을 밀어 준다 — 없으면 한 화면 밖으로는 못 옮긴다 */
+  const 여유=90;
+  if(e.clientY<여유) window.scrollBy(0,-14);
+  else if(e.clientY>window.innerHeight-여유) window.scrollBy(0,14);
+});
+function 끌기끝(){
+  if(!끌기.키) return;
+  if(끌기.카드) 끌기.카드.classList.remove('dragging');
+  const 새ord=[].slice.call(tl.querySelectorAll('details.stop .erow'))
+    .map(function(r){ return r.dataset.k; }).filter(Boolean);
+  끌기={키:null,카드:null};
+  if(새ord.length!==ordOf(curDay).length){ render(curDay); return; }
+  ordSet(curDay,새ord);
+  render(curDay); warmRides(curDay);
+}
+tl.addEventListener('pointerup',끌기끝);
+tl.addEventListener('pointercancel',끌기끝);
 /* 검색어를 고치면 후보만 갈아 끼운다 — 전체를 다시 그리면 글자를 칠 수 없다 */
 document.getElementById('tl').addEventListener('input',function(e){
   if(!editOn||!e.target.classList.contains('eqi')) return;
   const 상자=e.target.closest('.epick'); if(!상자) return;
   pickQ=e.target.value;
   const ul=상자.querySelector('ul');
-  if(ul) ul.innerHTML=pickItems(curDay,+상자.dataset.si,pickQ);
+  if(ul) ul.innerHTML=pickItems(curDay,상자.dataset.k,pickQ);
 });
 initMap();
 render(0);
