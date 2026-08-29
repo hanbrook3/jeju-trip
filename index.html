@@ -2739,15 +2739,31 @@ function rideInfo(a,b){
   if(!a||!b) return null;
   return RIDE[rideKey(a,b)]||null;
 }
-async function rideFetch(a,b){
+/* 여행 당일 그 시각을 yyyyMMddHHmm 으로. 자정을 넘겨도 날짜가 따라간다. */
+function 떠날때(day,hhmm){
+  const d=D[day]; if(!d||!d.dm) return null;
+  const 쪽=String(d.dm).split('.');
+  const 분=hm2min(hhmm); if(분===null) return null;
+  const t=new Date(2026,(+쪽[0])-1,+쪽[1],0,0);
+  t.setMinutes(분);
+  const p=function(v){ return (v<10?'0':'')+v; };
+  return t.getFullYear()+p(t.getMonth()+1)+p(t.getDate())+p(t.getHours())+p(t.getMinutes());
+}
+/* **여행 당일 그 시각에 출발한다고 보고 받는다.** 일반 길찾기는 "지금" 기준이라
+   새벽에 갈 길을 저녁 교통으로 재는 셈이 된다. 미래 운행 엔드포인트에
+   departure_time 을 줘야 그 시각의 예측이 온다 — 일반 쪽에 같은 값을 붙이면
+   그냥 무시된다(값이 그대로 나온다). 구워 두는 build-rides.js 와 같은 규칙이다. */
+async function rideFetch(a,b,때){
   if(!a||!b) return null;
   const k=rideKey(a,b);
   if(rideCache[k]!==undefined) return rideCache[k];
   const key=naviKey();
   if(!key) return guessMin(a,b);
   try{
-    const url='https://apis-navi.kakaomobility.com/v1/directions'
-      +'?origin='+a[1]+','+a[0]+'&destination='+b[1]+','+b[0];
+    const url=(때?'https://apis-navi.kakaomobility.com/v1/future/directions'
+               :'https://apis-navi.kakaomobility.com/v1/directions')
+      +'?origin='+a[1]+','+a[0]+'&destination='+b[1]+','+b[0]
+      +(때?'&departure_time='+때:'');
     const j=await (await fetch(url,{headers:{Authorization:'KakaoAK '+key}})).json();
     const r=j&&j.routes&&j.routes[0];
     /* result_code 102·103 은 좌표가 도로에서 멀다는 뜻이다. 그때는 추정으로 넘어간다. */
@@ -5156,12 +5172,16 @@ async function warmRides(day){
      그쪽이 추정값으로 남으면 장소를 바꾼 순간 머무는 시간이 튄다.
      고친 것이 없으면 두 목록이 같아 캐시에 걸리고 더 묻지 않는다. */
   let 바뀜=false;
-  for(const stops of [stopsOf(day),D[day].stops]){
-    for(let i=0;i<stops.length-1;i++){
-      const A=rideLL(stops[i],SPOT), B=rideLL(stops[i+1],SPOT);
+  /* 떠나는 시각을 함께 넘긴다. 계산된 출발 시각(depart)이 있으면 그것이 가장 맞고,
+     없으면 그 정차지에 적힌 시각으로 물러선다. */
+  const 계산=(function(){ try{ return dayPlan(day); }catch(e){ return null; } })();
+  for(const [목록,같은날] of [[stopsOf(day),true],[D[day].stops,false]]){
+    for(let i=0;i<목록.length-1;i++){
+      const A=rideLL(목록[i],SPOT), B=rideLL(목록[i+1],SPOT);
       if(!A||!B) continue;
+      const 시각=(같은날&&계산&&계산.depart&&계산.depart[i])||목록[i].t;
       const 전=rideNow(A,B);
-      const 후=await rideFetch(A,B);
+      const 후=await rideFetch(A,B,떠날때(day,시각));
       if(전!==후) 바뀜=true;
     }
   }
