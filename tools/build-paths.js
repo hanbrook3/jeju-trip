@@ -9,7 +9,14 @@
    구간별로 받아 이으면 한도와 무관하고 각 구간이 독립이라 다시 받기도 쉽다.
 
    좌표는 rideLL 과 같은 규칙으로 고른다(주차장이 있으면 주차장) — 선이 실제로 차가
-   서는 곳까지 가야 이동시간과 그림이 어긋나지 않는다. */
+   서는 곳까지 가야 이동시간과 그림이 어긋나지 않는다.
+
+   **build-rides.js 와 똑같이 여행 당일 그 시각으로 받는다.** 전에는 여기만
+   `/v1/directions`(=구울 때의 지금 교통)를 써서, 같은 화면 안에서 선과 시각이 서로
+   다른 길이 되는 구간이 있었다(1일차 제주항→방목지가 선은 시내 연삼로, 시각은
+   516로였다). "지금" 경로는 분 단위로 흔들려 구울 때마다 답이 달라지기도 했다.
+   출발 시각은 build-rides 와 같은 방법으로 두 번 맞춘다 — 정차지에 적힌 시각은
+   도착 시각이라, 1차로 어림한 이동시간을 다음 도착 시각에서 빼야 진짜 출발이 나온다. */
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
@@ -17,6 +24,22 @@ const HTML = path.join(ROOT, 'index.html');
 const KEY = process.env.KAKAO_REST_KEY || '';
 const DRY = process.argv.includes('--dry');
 const 허용오차 = 0.00006;          /* 약 6.7m — 20m 로 줄이면 길 위까지 확대했을 때 선이 도로를 벗어나 구불구불해 보인다 */
+const 해 = 2026;
+
+const 두자리 = v => (v < 10 ? '0' : '') + v;
+/* 'HH:MM' 을 그날 0시에서 몇 분 뒤인지로. 못 읽으면 null */
+function 분(hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
+  return m ? (+m[1]) * 60 + (+m[2]) : null;
+}
+/* 그날 0시에서 몇 분 뒤인지로 yyyyMMddHHmm 을 만든다. 자정을 넘겨도 날짜가 따라간다. */
+function 떠나는때(d, 지난분, D) {
+  const [월, 일] = D[d].dm.split('.').map(Number);
+  const t = new Date(해, 월 - 1, 일, 0, 0);
+  t.setMinutes(지난분);
+  return t.getFullYear() + 두자리(t.getMonth() + 1) + 두자리(t.getDate())
+    + 두자리(t.getHours()) + 두자리(t.getMinutes());
+}
 
 if (!KEY) { console.error('KAKAO_REST_KEY 가 없습니다. 콘솔의 앱 설정 > 플랫폼 키에서 REST 키를 넣으세요.'); process.exit(1); }
 
@@ -57,9 +80,10 @@ function 선까지거리(p, a, b) {
   return Math.hypot(p[1] - (a[1] + u * dx), p[0] - (a[0] + u * dy));
 }
 
-async function 구간(a, b) {
-  const url = 'https://apis-navi.kakaomobility.com/v1/directions'
-    + '?origin=' + a[1] + ',' + a[0] + '&destination=' + b[1] + ',' + b[0];
+async function 구간(a, b, 때) {
+  const url = 'https://apis-navi.kakaomobility.com/v1/future/directions'
+    + '?origin=' + a[1] + ',' + a[0] + '&destination=' + b[1] + ',' + b[0]
+    + '&departure_time=' + 때;
   const r = await fetch(url, { headers: { Authorization: 'KakaoAK ' + KEY } });
   const j = await r.json();
   const route = j && j.routes && j.routes[0];
@@ -69,7 +93,7 @@ async function 구간(a, b) {
     const v = road.vertexes || [];
     for (let i = 0; i + 1 < v.length; i += 2) 점.push([+v[i + 1].toFixed(6), +v[i].toFixed(6)]);
   }));
-  return { 점 };
+  return { 점, 분: Math.round(((route.summary || {}).duration || 0) / 60) };
 }
 
 (async () => {
@@ -94,7 +118,17 @@ async function 구간(a, b) {
         console.log(`  · ${i + 1}일차 ${정차지[k].n} → ${정차지[k + 1].n} : 사이에 배가 있어 잇지 않습니다`);
         continue;
       }
-      const r = await 구간(a, b);
+      /* 1차 — 앞 정차지 도착 시각으로 어림잡는다 */
+      const 앞시각 = 분(정차지[k].t), 뒤시각 = 분(정차지[k + 1].t);
+      let r = await 구간(a, b, 떠나는때(i, 앞시각 === null ? 9 * 60 : 앞시각, D));
+      /* 2차 — 다음 도착 시각에서 어림한 이동을 빼면 진짜 출발 시각이다 */
+      if (!r.오류 && 앞시각 !== null && 뒤시각 !== null) {
+        const 출발 = Math.max(앞시각, 뒤시각 - r.분);
+        if (출발 !== 앞시각) {
+          const 다시 = await 구간(a, b, 떠나는때(i, 출발, D));
+          if (!다시.오류) r = 다시;
+        }
+      }
       if (r.오류) {
         실패++;
         console.log(`  ! ${i + 1}일차 ${정차지[k].n} → ${정차지[k + 1].n} : ${r.오류} (직선으로 잇습니다)`);
