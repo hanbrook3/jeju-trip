@@ -354,5 +354,36 @@ console.log('\n[미리보기 문구의 개수]');
   });
 })();
 
+console.log('\n[지도 핀]');
+/* 지도에 번호 핀을 낼 정차지는 좌표가 있고 nopin 이 아닌 것이다(index.html 의 핀낼곳).
+   같은 자리에 핀이 둘이면 완전히 겹쳐 뒤엣것이 가려진다 — 남아 있는 자리를 여기 적어
+   두어 늘거나 줄면 알아채게 한다. */
+(function () {
+  const i = h.indexOf('const D=['), j = h.indexOf('\n];', i);
+  const D = eval(h.slice(i + 'const D='.length, j + 2));
+  const 핀낼곳 = s => !!(s && s.ll && !s.nopin);
+  let 합계 = 0; const 겹친자리 = [];
+  D.forEach(function (d, n) {
+    const 자리 = {};
+    d.stops.filter(핀낼곳).forEach(function (s) {
+      합계++;
+      const k = s.ll[0].toFixed(5) + ',' + s.ll[1].toFixed(5);
+      (자리[k] = 자리[k] || []).push(s.n);
+    });
+    Object.keys(자리).forEach(function (k) {
+      if (자리[k].length > 1) 겹친자리.push((n + 1) + '일차 ' + 자리[k].join('↔'));
+    });
+  });
+  확인('핀 낼 정차지 합계', 합계, 38);
+  /* 숙소는 하루의 처음이자 끝이라 핀 둘이 뜻을 갖는다 — 부채꼴로 벌려 둘 다 보인다.
+     펜션 조식처럼 뜻이 겹치기만 하는 것은 nopin 으로 뺐다. */
+  확인('한 자리에 핀이 둘인 곳', 겹친자리, [
+    '2일차 숙소 출발↔숙소 도착', '4일차 숙소 출발↔숙소 도착', '5일차 체크아웃↔숙소 출발']);
+  확인('nopin 인 정차지도 좌표를 갖는다',
+    D.flatMap(function (d) { return d.stops; }).filter(function (s) { return s.nopin; })
+      .map(function (s) { return s.n + (s.ll ? ' o' : ' ✗좌표없음'); }),
+    ['펜션 조식 o']);
+})();
+
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
 process.exitCode = 실패 ? 1 : 0;
