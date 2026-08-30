@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, '..');
 const HTML = path.join(ROOT, 'index.html');
 const KEY = process.env.KAKAO_REST_KEY || '';
 const DRY = process.argv.includes('--dry');
-const 허용오차 = 0.00018;          /* 약 20m — 섬 전체로 보든 확대하든 눈에 같다 */
+const 허용오차 = 0.00006;          /* 약 6.7m — 20m 로 줄이면 길 위까지 확대했을 때 선이 도로를 벗어나 구불구불해 보인다 */
 
 if (!KEY) { console.error('KAKAO_REST_KEY 가 없습니다. 콘솔의 앱 설정 > 플랫폼 키에서 REST 키를 넣으세요.'); process.exit(1); }
 
