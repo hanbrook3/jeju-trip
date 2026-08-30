@@ -386,7 +386,7 @@ console.log('\n[지도 핀]');
       if (자리[k].length > 1) 겹친자리.push((n + 1) + '일차 ' + 자리[k].join('↔'));
     });
   });
-  확인('핀 낼 정차지 합계', 합계, 39);
+  확인('핀 낼 정차지 합계', 합계, 38);
   /* 숙소는 하루의 처음이자 끝이라 핀 둘이 뜻을 갖는다 — 부채꼴로 벌려 둘 다 보인다.
      펜션 조식처럼 뜻이 겹치기만 하는 것은 nopin 으로 뺐다. */
   확인('한 자리에 핀이 둘인 곳', 겹친자리, [
@@ -397,7 +397,7 @@ console.log('\n[지도 핀]');
   확인('nopin 인 정차지도 좌표를 갖는다',
     D.flatMap(function (d) { return d.stops; }).filter(function (s) { return s.nopin; })
       .map(function (s) { return s.n + (s.ll ? ' o' : ' ✗좌표없음'); }),
-    ['펜션 조식 o']);
+    ['펜션 조식 o', '펜션 조식 o']);
 })();
 
 console.log(`\n통과 ${통과} · 실패 ${실패}`);
