@@ -804,6 +804,8 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .editbar .eslot .slotdo{display:none;gap:4px}
 .editbar .eslot.open .slotdo{display:inline-flex}
 .editbar .eslot.open .slotname{background:var(--sea);border-color:var(--sea);color:#fff}
+/* 옛 일정에서 담은 칸을 꺼낼 때 되묻는 상태 — 한 번 더 눌러야 들어간다 */
+.editbar .eslot .slotdo button.ask{background:#B5583C;border-color:#B5583C;color:#fff}
 /* 든 것이 있으면 점을 붙인다 — 어느 칸이 비었는지 눌러 보지 않아도 알아야 한다 */
 .editbar .eslot.full .slotname::after{content:' ●';font-size:9px;vertical-align:1px}
 .editbar button{
@@ -2614,16 +2616,32 @@ function offsetOf(구간들){
   return 밀기;
 }
 /* 선을 진행 방향의 옆으로 민다. **화면 좌표로 바꿔 밀고 되돌린다** — 좌표를 그대로
-   밀면 확대할수록 간격이 벌어져 실제 도로에서 크게 벗어난다. */
+   밀면 확대할수록 간격이 벌어져 실제 도로에서 크게 벗어난다.
+   **`latLngToLayerPoint` 는 정수로 반올림한다.** 경로를 6.7m 간격으로 촘촘히 구운
+   뒤로는 섬 전체 배율에서 한 점이 0.1px 이라, 이웃 점 여럿이 같은 픽셀로 뭉쳐
+   방향이 (0,0) 이 되었다. 그 점만 안 밀리고 옆 점은 제대로 밀려 선이 톱니(돼지꼬리)가
+   되었다 — 4일차 남쪽 해안에서 176점 중 30점이 그랬다.
+   그래서 반올림하지 않는 `project` 를 쓰고, **방향은 화면에서 4px 이상 떨어진 앞뒤
+   점으로 잰다** — 바로 옆 점은 확대 배율에 따라 있으나 마나 하기 때문이다. */
+const 방향창=4;
 function offsetSeg(co,px){
   if(!map||co.length<2||!px) return co;
-  const P=co.map(function(c){ return map.latLngToLayerPoint(L.latLng(c[0],c[1])); });
-  return P.map(function(p,i){
-    const a=P[Math.max(0,i-1)], b=P[Math.min(P.length-1,i+1)];
-    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
-    const q=map.layerPointToLatLng(L.point(p.x-dy/len*px, p.y+dx/len*px));
-    return [q.lat,q.lng];
-  });
+  const P=co.map(function(c){ return map.project(L.latLng(c[0],c[1])); });
+  const 누적=[0];
+  for(let i=1;i<P.length;i++) 누적.push(누적[i-1]+Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y));
+  /* 앞뒤 자리는 i 를 따라 앞으로만 가므로 훑개 두 개면 된다 */
+  let 앞=0, 뒤=0;
+  const 결과=[];
+  for(let i=0;i<P.length;i++){
+    while(앞+1<=i&&누적[i]-누적[앞+1]>=방향창) 앞++;
+    if(뒤<i) 뒤=i;
+    while(뒤+1<P.length&&누적[뒤]-누적[i]<방향창) 뒤++;
+    const dx=P[뒤].x-P[앞].x, dy=P[뒤].y-P[앞].y, len=Math.hypot(dx,dy);
+    if(!len){ 결과.push(co[i]); continue; }
+    const q=map.unproject(L.point(P[i].x-dy/len*px, P[i].y+dx/len*px));
+    결과.push([q.lat,q.lng]);
+  }
+  return 결과;
 }
 /* 하루 경로를 그린다. **차로 가는 길은 실선, 주차한 뒤 걷는 길만 촘촘한 점선**이고,
    갔다가 같은 길로 오는 구간은 나란히 띄워 둘 다 보이게 한다.
@@ -2728,12 +2746,24 @@ function drawArrows(co,색,밀,벌림){
 /* 편집 내용은 바뀐 값만 저장한다. 정차지 전체를 저장하면
    배포판 일정이 바뀌었을 때 옛 값이 통째로 되살아난다. */
 const EDIT_KEY='jeju-trip-edit';
+/* 지문이 안 맞아 지금 일정에 씌울 수 없을 때, **버리지 않고 빈 저장 칸으로 옮긴다.**
+   가족이 손으로 고쳐 둔 것을 말없이 지우면 되찾을 길이 없다. 저장 칸이 둘 다
+   차 있으면 따로 둔 자리에 담아 둔다. */
+const EDIT_OLD='jeju-trip-edit-old';
+function editStash(raw){
+  try{
+    for(const n of ['1','2']){
+      if(!localStorage.getItem(slotKey(n))){ localStorage.setItem(slotKey(n),raw); return; }
+    }
+    localStorage.setItem(EDIT_OLD,raw);
+  }catch(e){}
+}
 function editLoad(){
   try{
     const raw=localStorage.getItem(EDIT_KEY);
     if(!raw) return null;
     const o=JSON.parse(raw);
-    if(o.fp!==planFingerprint(D)){ localStorage.removeItem(EDIT_KEY); return null; }
+    if(o.fp!==planFingerprint(D)){ editStash(raw); localStorage.removeItem(EDIT_KEY); return null; }
     return o.edit||null;
   }catch(e){ return null; }
 }
@@ -3687,9 +3717,13 @@ function backWarn(이름,못박은,자연){
 }
 /* 배포판 일정의 지문. 저장해 둔 편집이 어느 일정에 붙은 것인지 가리는 데 쓴다.
    배포판이 바뀌었는데 옛 편집이 남아 있으면 엉뚱한 곳에 붙는다. */
+/* **시각은 넣지 않는다.** 편집 값은 (일차, 배포판 인덱스)로 매기므로, 그 짝이
+   어긋나는 것은 정차지가 늘거나 줄거나 이름이 바뀌거나 순서가 바뀔 때뿐이다.
+   시각까지 넣으면 배포판 시각을 1분만 손봐도 가족이 고쳐 둔 일정이 통째로 지워진다
+   — 실제로 화·목 출발 시각을 고치면서 저장해 둔 편집을 날렸다. */
 function planFingerprint(D){
   let s='';
-  D.forEach(function(d){ d.stops.forEach(function(x){ s+=x.n+'|'+x.t+';'; }); });
+  D.forEach(function(d){ s+=d.stops.map(function(x){ return x.n; }).join('|')+';;'; });
   let hash=0;
   for(let i=0;i<s.length;i++){ hash=(hash*31+s.charCodeAt(i))|0; }
   return String(hash);
@@ -5598,12 +5632,14 @@ function hashSync(){
 /* 고친 일정을 담아 두는 칸. 지문을 함께 저장해 **배포판이 바뀌면 버린다** —
    옛 일정에 매긴 편집을 새 일정에 씌우면 엉뚱한 정차지가 바뀐다(editLoad 와 같은 이유). */
 function slotKey(n){ return 'jeju-trip-slot'+n; }
+/* **지문이 달라도 지우지 않는다.** 담아 둔 것은 일부러 남긴 것이다.
+   옛 일정에서 담은 것임을 표시만 하고, 꺼낼 때 한 번 더 묻는다. */
 function slotRead(n){
   try{
     const raw=localStorage.getItem(slotKey(n));
     if(!raw) return null;
     const o=JSON.parse(raw);
-    if(o.fp!==planFingerprint(D)){ localStorage.removeItem(slotKey(n)); return null; }
+    o.옛것=(o.fp!==planFingerprint(D));
     return o;
   }catch(e){ return null; }
 }
@@ -5624,9 +5660,14 @@ function slotSync(){
     const o=slotRead(칸.dataset.s);
     칸.classList.toggle('full',!!o);
     const 이름=칸.querySelector('.slotname');
-    if(이름) 이름.title=o?('담은 때 '+(o.at||'')+' — 누르면 담기·꺼내기·비우기'):'비어 있음 — 누르면 담기';
+    if(이름) 이름.title=o?((o.옛것?'옛 일정에서 담음 — 자리가 어긋날 수 있습니다 · ':'')
+      +'담은 때 '+(o.at||'')+' — 누르면 담기·꺼내기·비우기'):'비어 있음 — 누르면 담기';
     const 꺼내=칸.querySelector('[data-do=get]'), 비움=칸.querySelector('[data-do=del]');
-    if(꺼내) 꺼내.disabled=!o;
+    if(꺼내){
+      꺼내.disabled=!o;
+      꺼내.classList.remove('ask');
+      꺼내.textContent=(o&&o.옛것)?'꺼내기(옛)':'꺼내기';
+    }
     if(비움) 비움.disabled=!o;
   });
 }
@@ -5649,6 +5690,12 @@ document.getElementById('slots').addEventListener('click',function(e){
   if(무엇==='put'){ slotPut(n); }
   else if(무엇==='get'){
     const o=slotRead(n); if(!o) return;
+    /* 옛 일정에서 담은 것은 정차지 자리가 어긋날 수 있다 — 한 번 더 누르게 한다 */
+    if(o.옛것&&!짓.classList.contains('ask')){
+      짓.classList.add('ask'); 짓.textContent='그래도 꺼낼까요?';
+      setTimeout(function(){ 짓.classList.remove('ask'); slotSync(); },4000);
+      return;
+    }
     editData=o.edit||{};
     editSave(editData);
     칸.classList.remove('open');

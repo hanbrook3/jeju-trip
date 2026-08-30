@@ -312,9 +312,21 @@ console.log('\n[저장 지문]');
   const A=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'}]}];
   const B=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'}]}];
   const C=[{stops:[{n:'가',t:'09:00'},{n:'다',t:'10:00'}]}];
+  /* 편집 값은 (일차, 배포판 인덱스)로 매긴다. 그 짝이 어긋나는 것 — 정차지가 늘거나
+     줄거나 이름이 바뀌거나 순서가 바뀔 때 — 만 지문이 달라져야 한다.
+     **시각이 지문을 바꾸면 배포판 시각을 1분 손볼 때마다 가족의 편집이 지워진다.** */
+  const T=[{stops:[{n:'가',t:'08:35'},{n:'나',t:'10:00'}]}];
+  const 넣음=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'},{n:'다',t:'11:00'}]}];
+  const 뒤바꿈=[{stops:[{n:'나',t:'10:00'},{n:'가',t:'09:00'}]}];
+  const 두날=[{stops:[{n:'가',t:'09:00'}]},{stops:[{n:'나',t:'10:00'}]}];
+  const 한날=[{stops:[{n:'가',t:'09:00'},{n:'나',t:'10:00'}]}];
   확인('같은 일정은 같은 지문', API.planFingerprint(A), API.planFingerprint(B));
   확인('이름이 바뀌면 다른 지문', API.planFingerprint(A)!==API.planFingerprint(C), true);
   확인('지문은 문자열', typeof API.planFingerprint(A), 'string');
+  확인('시각만 달라지면 같은 지문', API.planFingerprint(A), API.planFingerprint(T));
+  확인('정차지를 넣으면 다른 지문', API.planFingerprint(A)!==API.planFingerprint(넣음), true);
+  확인('순서를 바꾸면 다른 지문', API.planFingerprint(A)!==API.planFingerprint(뒤바꿈), true);
+  확인('날짜 경계를 넘어도 다른 지문', API.planFingerprint(두날)!==API.planFingerprint(한날), true);
 }
 
 console.log('\n[길찾기 좌표 고르기]');
