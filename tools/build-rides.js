@@ -61,9 +61,12 @@ function 떠나는때(d, 지난분) {
     + 두자리(t.getHours()) + 두자리(t.getMinutes());
 }
 
-async function 재기(a, b, 때) {
+/* 경유지(via)를 주면 그 점들을 지나는 길로 잰다 — build-paths 와 같은 규칙이라야
+   선과 시각이 같은 길에서 나온다. */
+async function 재기(a, b, 때, 경유) {
   const url = 'https://apis-navi.kakaomobility.com/v1/future/directions'
     + '?origin=' + a[1] + ',' + a[0] + '&destination=' + b[1] + ',' + b[0]
+    + (경유 && 경유.length ? '&waypoints=' + 경유.map(p => p[1] + ',' + p[0]).join('|') : '')
     + '&departure_time=' + 때;
   const r = await fetch(url, { headers: { Authorization: 'KakaoAK ' + KEY } });
   const j = await r.json();
@@ -96,12 +99,12 @@ async function 재기(a, b, 때) {
 
       /* 1차 — 앞 정차지 도착 시각으로 어림잡는다 */
       const 첫때 = 떠나는때(d, 앞 === null ? 9 * 60 : 앞);
-      let r = await 재기(a, b, 첫때);
+      let r = await 재기(a, b, 첫때, 정차지[i].via);
       if (!r.오류 && 앞 !== null && 뒤 !== null) {
         /* 2차 — 다음 도착 시각에서 어림한 이동을 빼면 진짜 출발 시각이다 */
         const 출발 = Math.max(앞, 뒤 - r.분);
         if (출발 !== 앞) {
-          const 다시 = await 재기(a, b, 떠나는때(d, 출발));
+          const 다시 = await 재기(a, b, 떠나는때(d, 출발), 정차지[i].via);
           if (!다시.오류) r = 다시;
         }
       }

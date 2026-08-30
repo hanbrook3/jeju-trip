@@ -80,9 +80,13 @@ function 선까지거리(p, a, b) {
   return Math.hypot(p[1] - (a[1] + u * dx), p[0] - (a[0] + u * dy));
 }
 
-async function 구간(a, b, 때) {
+/* 경유지(via)를 주면 그 점들을 지나는 길을 받는다 — 카카오 추천이 크게 돌아갈 때 쓴다.
+   화요일 아침 → 1100고지가 추천대로면 한라산을 북쪽으로 돌아 51.5km 인데,
+   서귀다원(516로) 을 경유지로 주면 남쪽 중산간으로 올라 47.1km 가 된다. */
+async function 구간(a, b, 때, 경유) {
   const url = 'https://apis-navi.kakaomobility.com/v1/future/directions'
     + '?origin=' + a[1] + ',' + a[0] + '&destination=' + b[1] + ',' + b[0]
+    + (경유 && 경유.length ? '&waypoints=' + 경유.map(p => p[1] + ',' + p[0]).join('|') : '')
     + '&departure_time=' + 때;
   const r = await fetch(url, { headers: { Authorization: 'KakaoAK ' + KEY } });
   const j = await r.json();
@@ -128,12 +132,12 @@ async function 구간(a, b, 때) {
       }
       /* 1차 — 앞 정차지 도착 시각으로 어림잡는다 */
       const 앞시각 = 분(정차지[k].t), 뒤시각 = 분(정차지[k + 1].t);
-      let r = await 구간(a, b, 떠나는때(i, 앞시각 === null ? 9 * 60 : 앞시각, D));
+      let r = await 구간(a, b, 떠나는때(i, 앞시각 === null ? 9 * 60 : 앞시각, D), 정차지[k].via);
       /* 2차 — 다음 도착 시각에서 어림한 이동을 빼면 진짜 출발 시각이다 */
       if (!r.오류 && 앞시각 !== null && 뒤시각 !== null) {
         const 출발 = Math.max(앞시각, 뒤시각 - r.분);
         if (출발 !== 앞시각) {
-          const 다시 = await 구간(a, b, 떠나는때(i, 출발, D));
+          const 다시 = await 구간(a, b, 떠나는때(i, 출발, D), 정차지[k].via);
           if (!다시.오류) r = 다시;
         }
       }
