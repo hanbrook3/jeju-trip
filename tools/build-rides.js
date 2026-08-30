@@ -85,6 +85,11 @@ async function 재기(a, b, 때) {
     for (let i = 0; i + 1 < 정차지.length; i++) {
       const a = 길좌표(정차지[i]), b = 길좌표(정차지[i + 1]);
       if (!a || !b) continue;
+      /* 차가 아닌 구간(도보·버스)은 적어 둔 시간이 근거다 — 도로 주행시간을 담으면 안 된다 */
+      if (정차지[i].way) {
+        console.log(`  · ${d + 1}일차 ${정차지[i].n} → ${정차지[i + 1].n} : ${정차지[i].way.ty} ${정차지[i].way.min}분 — 적어 둔 값을 씁니다`);
+        continue;
+      }
       const k = 키(a, b);
       const 앞 = 분(정차지[i].t), 뒤 = 분(정차지[i + 1].t);
       if (표[k]) { 겹침.push(`${d + 1}일차 ${정차지[i].n} → ${정차지[i + 1].n} (이미 받은 구간)`); continue; }
