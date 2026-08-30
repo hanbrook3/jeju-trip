@@ -841,6 +841,15 @@ button{font-family:inherit;font-size:inherit;color:inherit}
   flex:1 0 100%;margin-top:2px;padding:6px 8px;border-radius:6px;
   background:var(--ambersoft);color:#8A5A12;font-size:11.5px;line-height:1.5
 }
+/* 그 정차지에 머무는 시간. 부제 앞에 작은 알약으로 붙는다 —
+   줄을 새로 만들지 않아 목록이 길어지지 않는다. */
+.stay{
+  display:inline-block;margin-right:5px;padding:1px 6px;border-radius:999px;
+  background:var(--seasoft);color:var(--sea);
+  font-size:11px;font-weight:600;letter-spacing:-.02em;vertical-align:1px;
+}
+.stop.meal .stay{background:var(--ambersoft);color:var(--amber)}
+.stop.ship .stay{background:var(--rosesoft);color:var(--rose)}
 /* 카드 사이의 이동 표시 — 다음 곳까지 무엇으로 얼마나 걸리는지.
    카드 사이 여백 안에 놓아 목록이 크게 길어지지 않게 한다. */
 .hop{
@@ -4500,6 +4509,26 @@ function editRow(day,키,s,자리){
          +(실측?'':' <span class="egu">어림</span>')+'</div>';
      })();
 }
+/* 분을 사람이 읽는 꼴로. 60분이 넘으면 시간과 분으로 나눈다. */
+function 분글(m){
+  const h=Math.floor(m/60), n=m%60;
+  return h?(h+'시간'+(n?' '+n+'분':'')):(n+'분');
+}
+/* 이 정차지에 머무는 시간. **다음 정차지까지 어떻게 가는지 알 때만 적는다** —
+   모르면 그 이동이 체류에 섞여 있어 얼마를 머무는지 가릴 수 없다(hopRow 와 같은 규칙).
+   걸어서 옮기는 이웃은 계산이 이동을 0으로 보므로 실측 걷는 시간을 빼 준다 —
+   그래야 머묾과 이동을 더한 값이 다음 정차지 시각과 맞는다. */
+function stayText(목록,i,계획){
+  const a=목록[i], b=목록[i+1];
+  if(!a||!b||!계획||!계획.stay) return '';
+  const 주a=rideLL(a,SPOT), 주b=rideLL(b,SPOT);
+  const 걸어감=!!(주a&&주b&&a.ll&&b.ll&&km(주a,주b)<=0.005);
+  const 이동=계획.rides&&계획.rides[i];
+  if(!걸어감&&(이동===null||이동===undefined)) return '';
+  const 머묾=(계획.stay[i]||0)-(걸어감?(a.walk||0):0);
+  if(!(머묾>0)) return '';
+  return '<span class="stay">'+분글(머묾)+' 머묾</span>';
+}
 /* 카드 사이에 다음 곳까지 무엇으로 얼마나 걸리는지 적는다.
    **좌표 없는 정차지의 앞뒤로는 적지 않는다** — 그 구간의 주행은 배포판 시각 차이가
    체류에 흡수하고 있어, 얼마가 이동이고 얼마가 머무는 시간인지 가릴 수 없다.
@@ -4587,11 +4616,12 @@ function render(i){
     const 때=(window.__plan&&window.__plan.arrive[si])||s.t;
     /* 지도 핀 번호와 같은 순서 — 둘 다 좌표 있는 일정만 세므로 항상 일치한다 */
     const k=s.ll?mi++:-1;
+    const 머묾=editOn?'':stayText(목록,si,계획);
     const mk=k>=0?` data-k="${k}" data-lat="${s.ll[0]}" data-lng="${s.ll[1]}"`:'';
     /* 편집 중에는 카드를 열어 둔 채 편집 줄만 보여 준다 — 접혀 있으면 편집 칸이 보이지 않는다 */
     return `<details class="stop ${s.ty}"${has?'':' data-x'}${mk}${editOn?' open':''}>
       <summary class="head"><span class="tm">${apChip(때)}</span>
-      <span class="ttl"><h3>${k>=0?`<b class="pnum"${핀색[k]?` style="--pinfill:${핀색[k]}"`:''}>${k+1}</b>`:''}${s.n}</h3>${s.sub?`<p>${apText(s.sub)}</p>`:''}</span>
+      <span class="ttl"><h3>${k>=0?`<b class="pnum"${핀색[k]?` style="--pinfill:${핀색[k]}"`:''}>${k+1}</b>`:''}${s.n}</h3>${(머묾||s.sub)?`<p>${머묾}${s.sub?apText(s.sub):''}</p>`:''}</span>
       ${has?CH:'<span></span>'}</summary>${editOn?editRow(i,s._k,s,si):(has?detail(s):'')}</details>`
       +(editOn?'':hopRow(목록,si,계획.rides));}).join('');
   tl.querySelectorAll('details[data-x]').forEach(x=>x.querySelector('summary').style.cursor='default');
