@@ -81,11 +81,19 @@ async function 구간(a, b) {
   const 새PATHS = [];
   let 원점수 = 0, 준점수 = 0, 실패 = 0;
   for (let i = 0; i < D.length; i++) {
-    const 정차지 = D[i].stops.filter(s => s.ll);
+    const 전부 = D[i].stops;
+    const 정차지 = 전부.filter(s => s.ll);
     let 하루 = [];
     for (let k = 0; k + 1 < 정차지.length; k++) {
       const a = 길좌표(정차지[k], SPOT), b = 길좌표(정차지[k + 1], SPOT);
       if (!a || !b) continue;
+      /* **배로 건너는 구간은 도로로 잇지 않는다.** 육로가 없는 곳을 물으면 카카오가
+         돌아가는 길을 돌려준다 — 진도→제주를 물었더니 완도 쪽 해안도로가 나왔다. */
+      const 앞 = 전부.indexOf(정차지[k]), 뒤 = 전부.indexOf(정차지[k + 1]);
+      if (전부.slice(앞 + 1, 뒤).some(s => s.ty === 'ship')) {
+        console.log(`  · ${i + 1}일차 ${정차지[k].n} → ${정차지[k + 1].n} : 사이에 배가 있어 잇지 않습니다`);
+        continue;
+      }
       const r = await 구간(a, b);
       if (r.오류) {
         실패++;
