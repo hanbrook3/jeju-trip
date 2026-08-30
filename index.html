@@ -1353,6 +1353,13 @@ summary.fhead .chev{flex:0 0 18px}
 .rows .k small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;line-height:1.5;margin-top:1px}
 .rows .v{font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:13px;color:var(--sea);white-space:nowrap;padding-top:1px}
 .rows a{color:var(--sea);text-decoration:none;font-weight:600}
+.rows .tl{display:block;margin:8px 0 2px;padding:9px 0 0;border-top:1px dashed var(--line)}
+.rows .tl>span{display:flex;gap:10px;align-items:baseline;padding:3px 0;
+  font-size:12.5px;color:var(--ink2);line-height:1.55;font-weight:400}
+.rows .tl i{flex:none;width:80px;font-style:normal;letter-spacing:-.04em;
+  font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:11.5px;color:var(--sea)}
+.rows .tl .dl{font-weight:600;color:var(--rose)}
+.rows .tl .dl i{color:var(--rose)}
 .chks li::before{
   content:"";flex:0 0 16px;height:16px;margin-top:3px;
   border:1.6px solid var(--faint);border-radius:4px;
@@ -1653,9 +1660,21 @@ summary.fhead .chev{flex:0 0 18px}
     <summary class="fhead"><span><span class="hi">●</span> 놓치면 안 되는 시각</span>
       <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></summary>
     <div class="fbody"><ul class="rows">
-      <li><span class="k">10/5 진도항 차량 마감<small>공휴일이라 11:50 진입 · 선적은 낮 12:30 시작</small></span><span class="v hi">오후 1:10</span></li>
-      <li><span class="k">10/9 제주항 차량 마감<small>출항 1시간 전 · 여객 승선은 오전 10:50까지</small></span><span class="v hi">오전 10:00</span></li>
-      <li><span class="k">10/7 종달리 출발<small>야간 중산간 58분 — 더 늦으면 위험</small></span><span class="v hi">오후 7:00</span></li>
+      <li><span class="k"><b>10/5 진도항</b> · 오후 1:30 출항<small>개천절 대체공휴일이라 선적 줄이 깁니다</small>
+        <span class="tl">
+          <span><i>11:50~12:00</i>진도항 진입 — 선적 구역 줄에 차를 대기</span>
+          <span><i>12:30~12:50</i>선적 시작 — 앞 순번으로 빠르게 싣고 나옵니다</span>
+          <span><i>12:50~13:10</i>터미널에서 대기 — 화장실, 멀미약</span>
+          <span class="dl"><i>13:10</i>차량 선적 마감</span>
+          <span><i>13:20</i>여객 승선 마감</span>
+        </span></span></li>
+      <li><span class="k"><b>10/9 제주항</b> · 오전 11:00 출항<small>차량 마감이 출항 1시간 전이라 가장 빠듯합니다</small>
+        <span class="tl">
+          <span><i>09:10~09:30</i>2부두 도착 — 차량 선적, 전원 하차해 걸어 나옵니다</span>
+          <span class="dl"><i>10:00</i>차량 선적 마감</span>
+          <span><i>10:00~10:30</i>터미널에서 매표·발권 — 신분증</span>
+          <span><i>10:30~10:50</i>여객 승선 (10:50 마감)</span>
+        </span></span></li>
     </ul></div>
   </details>
 
