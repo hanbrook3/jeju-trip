@@ -959,14 +959,29 @@ body.editing #tl .chev{visibility:hidden}
 .sresult{margin-top:8px}
 .sresult[hidden]{display:none}
 .srow{
-  display:flex;align-items:baseline;gap:7px;width:100%;text-align:left;
+  display:block;width:100%;text-align:left;
   appearance:none;cursor:pointer;font-family:inherit;
-  padding:9px 11px;margin-bottom:6px;
+  padding:10px 11px;margin-bottom:6px;
   border:1px solid var(--line);border-radius:var(--r);background:var(--card);
 }
-.srow .sn{font-size:13px;font-weight:600;color:var(--ink)}
-.srow .sc{font-size:11px;color:var(--faint);flex:0 0 auto}
-.srow .sa{font-size:11px;color:var(--faint);margin-left:auto;text-align:right}
+.srow .shead{display:flex;align-items:baseline;gap:6px}
+.srow .sn{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:-.015em}
+.srow .sc{flex:0 0 auto;font-size:10.5px;font-weight:600;color:var(--sea);
+  background:var(--seasoft);padding:1px 7px;border-radius:999px;white-space:nowrap}
+.srow .sdist{flex:0 0 auto;margin-left:auto;font-size:11px;color:var(--faint);white-space:nowrap}
+.srow .shave{flex:0 0 auto;margin-left:6px;font-size:11px;color:var(--faint);white-space:nowrap}
+.srow .sa{margin:5px 0 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+.srow .smeta{margin:6px 0 0;display:flex;gap:12px;flex-wrap:wrap;
+  font-size:11.5px;line-height:1.5}
+.srow .smeta a{color:var(--sea);text-decoration:none;font-weight:600}
+.srow .shint{color:var(--faint)}
+.srow .sblog{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.srow .sblog[hidden]{display:none}
+.srow .sblog .sbt{margin:0 0 5px;font-size:10.5px;color:var(--faint);letter-spacing:-.02em}
+.srow .sblog p{margin:0 0 6px;font-size:11.5px;line-height:1.5;color:var(--muted)}
+.srow .sblog p:last-child{margin-bottom:0}
+.srow .sblog a{color:var(--ink2);text-decoration:none}
+.srow .sblog b{color:var(--ink);font-weight:600}
 .smsg{font-size:12.5px;color:var(--faint);padding:6px 2px;margin:0}
 /* 넣기 칸 — 대화창을 쓰지 않고 결과 자리에 연다 */
 .saddbox{
@@ -1180,6 +1195,7 @@ details.fcard[open] .chev{transform:rotate(90deg);color:var(--sea2)}
 .legbtns button:active{background:var(--seasoft)}
 .legbtns button:focus-visible{outline:2px solid var(--sea2);outline-offset:1px}
 .legbtns .maptoggle{color:var(--muted);font-weight:500}
+.legbtns .mapair[aria-pressed="true"]{background:var(--seasoft);border-color:var(--sea)}
 
 /* 지도 전체보기 — 화면을 가득 채운다 */
 body.mapfull{overflow:hidden}
@@ -1588,6 +1604,7 @@ summary.fhead .chev{flex:0 0 18px}
       <span class="lgtip">점을 누르면 아래에 정보가 나옵니다</span>
       <span class="lghash" id="editkey" title="일정 편집">#</span>
       <span class="legbtns">
+        <button class="mapair" id="mapair" type="button" aria-pressed="false">항공사진</button>
         <button class="mapfit" id="mapfit" type="button">섬 전체</button>
         <button class="mapall" id="mapall" type="button" aria-pressed="false">전체보기</button>
         <button class="maptoggle" id="maptoggle" type="button" aria-expanded="true">지도 접기</button>
@@ -2346,6 +2363,12 @@ function setBadge(글){
   el.textContent=글||(airBg?TILE_AIR.a:(TILE_SRC[tileIdx]&&TILE_SRC[tileIdx].a)||"");
   el.classList.add("bgswap");
   el.title="눌러서 지도 배경 바꾸기";
+  /* 범례의 버튼도 같이 맞춘다 — 두 곳이 다른 말을 하면 안 된다 */
+  const 단추=document.getElementById("mapair");
+  if(단추){
+    단추.textContent=airBg?"일반 지도":"항공사진";
+    단추.setAttribute("aria-pressed",airBg?"true":"false");
+  }
 }
 /* Leaflet 이 조작 버튼의 클릭을 삼키므로 캡처 단계에서 받는다 */
 function bindBadge(){
@@ -2359,6 +2382,15 @@ function bindBadge(){
   },true);
   setBadge();
 }
+/* 출처 표기는 작고 무슨 뜻인지 알 수 없다 — 같은 일을 하는 버튼을 범례에 둔다 */
+(function(){
+  const b=document.getElementById("mapair");
+  if(!b) return;
+  b.addEventListener("click",function(e){
+    e.preventDefault(); e.stopPropagation();
+    setAirBg(!airBg);
+  });
+})();
 function mountTiles(i){
   if(!map) return;
   tileIdx=i; tileErr=0;
@@ -5139,6 +5171,68 @@ function sEsc(v){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
+/* 숙소에서 얼마나 떨어져 있나 — 제주 어디쯤인지가 판단의 반이다 */
+function 숙소좌표(){
+  for(const d of D) for(const s of d.stops) if(/^숙소/.test(s.n)&&s.ll) return s.ll;
+  return [33.3050,126.7122];
+}
+function 집에서(d){
+  const 거리=km(숙소좌표(),[Number(d.y),Number(d.x)]);
+  if(거리===null||!isFinite(거리)) return "";
+  return "숙소에서 "+(거리<10?거리.toFixed(1):Math.round(거리))+"km";
+}
+/* "음식점 > 한식 > 한정식" 에서 맨 끝만. 큰분류(음식점)는 탭이 이미 말해 준다 */
+function 잔가지(v){
+  const a=String(v||"").split(">").map(function(s){ return s.trim(); }).filter(Boolean);
+  return a.length?a[a.length-1]:"";
+}
+/* 밖에서 온 글은 태그를 떼고 글자만 쓴다 — 카카오가 찾은 말을 <b> 로 감싸 준다 */
+function 민글(v){
+  return String(v==null?"":v).replace(/<[^>]*>/g,"")
+    .replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'").replace(/&amp;/g,"&").trim();
+}
+/* 다음 블로그 검색. REST 키가 있을 때만 부른다 — 키는 이 브라우저에만 있다. */
+const 후기캐시={};
+async function 후기받기(d){
+  if(후기캐시[d.id]!==undefined) return 후기캐시[d.id];
+  const 키=naviKey();
+  if(!키) return null;
+  try{
+    const u="https://dapi.kakao.com/v2/search/blog?size=3&sort=accuracy&query="
+      +encodeURIComponent(d.place_name+" 제주");
+    const r=await fetch(u,{headers:{Authorization:"KakaoAK "+키}});
+    if(!r.ok) throw new Error(r.status);
+    const j=await r.json();
+    const 값={전체:(j.meta&&j.meta.total_count)||0,
+      글:(j.documents||[]).slice(0,3).map(function(x){
+        return {제목:민글(x.title),요약:민글(x.contents),주소:x.url||""};
+      })};
+    후기캐시[d.id]=값;
+    return 값;
+  }catch(e){ return {오류:true}; }
+}
+/* 줄을 누르면 그 자리에 후기를 편다. 두 번 누르면 접는다. */
+async function 후기펼치기(i){
+  const d=찾은곳[i];
+  if(!d||!naviKey()) return;
+  const 줄=document.querySelector('.srow[data-si="'+i+'"]');
+  const 자리=줄&&줄.querySelector(".sblog");
+  if(!자리) return;
+  if(자리.dataset.done==="1"){ 자리.hidden=!자리.hidden; return; }
+  자리.hidden=false;
+  자리.innerHTML='<p class="sbt">후기를 찾는 중…</p>';
+  const v=await 후기받기(d);
+  자리.dataset.done="1";
+  if(!v||v.오류){ 자리.innerHTML='<p class="sbt">후기를 가져오지 못했습니다.</p>'; return; }
+  if(!v.글.length){ 자리.innerHTML='<p class="sbt">블로그 후기가 없습니다.</p>'; return; }
+  자리.innerHTML='<p class="sbt">블로그 후기 '+v.전체.toLocaleString()+'건 — 위에서 3건</p>'
+    +v.글.map(function(g){
+      const 요약=g.요약.slice(0,80);
+      return '<p><a href="'+sEsc(g.주소)+'" target="_blank" rel="noopener noreferrer nofollow"><b>'
+        +sEsc(g.제목)+'</b></a><br>'+sEsc(요약)+(g.요약.length>80?"…":"")+'</p>';
+    }).join("");
+}
 function loadKakaoSdk(){
   if(kakaoSdk) return kakaoSdk;
   kakaoSdk=new Promise(function(ok,no){
@@ -5255,13 +5349,27 @@ async function doSearch(){
   (curMode==='food'?FOOD:SPOT).forEach(function(x){ 있는이름[x.n]=1; });
   const r=document.getElementById('sresult');
   r.hidden=false;
+  const 키있음=!!naviKey();
   r.innerHTML=찾은곳.map(function(d,i){
     const 이미=있는이름[d.place_name];
+    const 갈래=잔가지(d.category_name)||d.category_group_name||'';
+    const 전화=String(d.phone||'').trim();
+    const 링크=String(d.place_url||'').replace(/^http:/,'https:');
     return '<div class="srow" role="button" tabindex="0" data-si="'+i+'">'
-      +'<span class="sn">'+sEsc(d.place_name)+'</span>'
-      +'<span class="sc">'+sEsc(이미?'목록에 있음':(d.category_group_name||''))+'</span>'
-      +'<span class="sa">'+sEsc(d.road_address_name||d.address_name||'')+'</span>'
-      +(이미?'':'<button type="button" class="sadd" data-add="'+i+'" aria-label="목록에 넣기">+</button>')
+      +'<div class="shead">'
+        +'<span class="sn">'+sEsc(d.place_name)+'</span>'
+        +(갈래?'<span class="sc">'+sEsc(갈래)+'</span>':'')
+        +'<span class="sdist">'+sEsc(집에서(d))+'</span>'
+        +(이미?'<span class="shave">목록에 있음</span>'
+             :'<button type="button" class="sadd" data-add="'+i+'" aria-label="목록에 넣기">+</button>')
+      +'</div>'
+      +'<p class="sa">'+sEsc(d.road_address_name||d.address_name||'')+'</p>'
+      +'<p class="smeta">'
+        +(전화?'<a href="tel:'+sEsc(전화.replace(/[^0-9+]/g,''))+'">'+sEsc(전화)+'</a>':'')
+        +(링크?'<a href="'+sEsc(링크)+'" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>':'')
+        +(키있음?'<span class="shint">눌러서 후기 보기</span>':'')
+      +'</p>'
+      +'<div class="sblog" hidden></div>'
       +'</div>';
   }).join('');
   drawFound();
@@ -5281,8 +5389,12 @@ function searchBind(){
     if(넣기){ e.preventDefault(); e.stopPropagation(); addPlace(+넣기.getAttribute('data-add')); return; }
     if(e.target.closest('#saok')){ e.preventDefault(); e.stopPropagation(); addConfirm(); return; }
     if(e.target.closest('#sano')){ e.preventDefault(); e.stopPropagation(); doSearch(); return; }
+    /* 전화·카카오맵·후기 링크는 그대로 열리게 둔다 */
+    if(e.target.closest('a')) return;
     const row=e.target.closest('.srow'); if(!row) return;
-    pickFound(+row.dataset.si);
+    const 자리=+row.dataset.si;
+    pickFound(자리);
+    후기펼치기(자리);
   });
 }
 searchBind();
