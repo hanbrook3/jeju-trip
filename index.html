@@ -16,6 +16,7 @@
 <meta property="og:url" content="https://hanbrook3.github.io/jeju-trip/">
 <meta name="description" content="2026.10.05 ~ 10.09 제주 4박 5일 가족 여행 안내 — 일정, 여행지 49곳, 맛집 63곳, 준비물">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="제주 여행">
@@ -1249,6 +1250,18 @@ body.mapfull{overflow:hidden}
   font-size:12.5px;font-weight:600;letter-spacing:-.03em;color:var(--ink2);
 }
 .dstats .dsep{font-style:normal;color:var(--faint)}
+.instbox{margin:0 0 16px;padding:15px 17px;border-radius:var(--r);
+  background:var(--card);border:1px solid var(--line)}
+.instbox h3{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.015em;color:var(--ink)}
+.instbox p{margin:7px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.6}
+.instbox .instep{display:flex;gap:7px;align-items:flex-start;margin-top:9px;
+  font-size:12.5px;color:var(--ink2);line-height:1.55}
+.instbox .instep em{flex:none;font-style:normal;font-weight:600;color:var(--sea)}
+.instbox .inshare{display:inline-block;width:15px;height:17px;vertical-align:-4px;margin:0 1px}
+.instbox .inrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:13px}
+.instbox button{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:600;
+  font-size:13.5px;padding:10px 18px;border-radius:999px;background:var(--sea);color:#fff}
+.instbox button.inlater{background:none;color:var(--muted);font-weight:500;padding:10px 8px}
 
 /* ═══ 메인 타임라인 ═══ */
 .tl{margin-top:14px}
@@ -1654,6 +1667,7 @@ summary.fhead .chev{flex:0 0 18px}
       <div>숙소<b>남원읍</b>서의로154번길</div>
     </div>
   </header>
+  <div class="instbox" id="installbox" hidden></div>
   <h2 style="font-family:'Gowun Batang','Nanum Myeongjo','Apple SD Gothic Neo',serif;font-size:19px;margin:6px 0 10px">여행 내내 챙길 것</h2>
 
   <details class="fold" open>
@@ -6074,6 +6088,63 @@ window.addEventListener('unhandledrejection',function(e){ if(e&&e.preventDefault
 /* ══════ 오프라인 ══════
    한 번 연 뒤에는 신호가 끊긴 중산간에서도 일정·맛집·여행지·준비물이 그대로 열린다.
    지도 타일과 경로 계산만 인터넷이 필요하다. */
+/* ══════ 앱으로 설치 ══════
+   홈 화면에서 이미 열었으면 아무것도 그리지 않는다. */
+(function(){
+  const 상자=document.getElementById('installbox');
+  if(!상자) return;
+  const 숨김키='jeju-trip-install-hide';
+  let 껐나=false;
+  try{ 껐나=localStorage.getItem(숨김키)==='1'; }catch(e){}
+  const 이미앱=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  if(이미앱||껐나) return;
+  const ua=navigator.userAgent;
+  const 아이폰=/iPad|iPhone|iPod/.test(ua);
+  const 사파리=아이폰&&!/CriOS|FxiOS|EdgiOS|OPiOS|Whale/.test(ua);
+  const 공유='<svg class="inshare" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><path d="M5 11H3v13h18V11h-2"/></svg>';
+  let 설치신호=null;
+  const 머리='<h3>휴대폰에 앱으로 담아 두세요</h3>'
+    +'<p>홈 화면에 아이콘이 생기고 <b>주소창 없이 앱처럼</b> 열립니다. 한 번 담아 두면 <b>인터넷이 없어도</b> 일정·맛집·여행지·준비물이 그대로 열려, 배 안이나 중산간 도로처럼 신호가 약한 곳에서도 씁니다.</p>';
+  function 나중에(){
+    상자.hidden=true;
+    try{ localStorage.setItem(숨김키,'1'); }catch(e){}
+  }
+  function 그리기(){
+    let 속;
+    if(설치신호){
+      속=머리+'<div class="inrow"><button id="instgo">앱으로 설치</button>'
+        +'<button class="inlater">나중에</button></div>';
+    }else if(사파리){
+      속=머리
+        +'<p class="instep"><em>①</em><span>화면 아래 '+공유+' <b>공유</b> 버튼을 누릅니다</span></p>'
+        +'<p class="instep"><em>②</em><span>목록을 내려 <b>홈 화면에 추가</b>를 누릅니다</span></p>'
+        +'<div class="inrow"><button class="inlater">알겠습니다</button></div>';
+    }else if(아이폰){
+      속=머리
+        +'<p><b>Safari 로 열어야</b> 홈 화면에 추가할 수 있습니다. 이 주소를 복사해 Safari 에서 연 뒤, 아래 공유 버튼 → <b>홈 화면에 추가</b>를 누르세요.</p>'
+        +'<div class="inrow"><button class="inlater">알겠습니다</button></div>';
+    }else{
+      속=머리
+        +'<p>브라우저 메뉴(⋮)에서 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누르세요.</p>'
+        +'<div class="inrow"><button class="inlater">알겠습니다</button></div>';
+    }
+    상자.innerHTML=속;
+    상자.hidden=false;
+    const 가자=document.getElementById('instgo');
+    if(가자) 가자.onclick=function(){
+      const e=설치신호; 설치신호=null;
+      if(!e) return;
+      e.prompt();
+      e.userChoice.then(function(r){ if(r&&r.outcome==='accepted') 상자.hidden=true; else 그리기(); });
+    };
+    const 나중=상자.querySelector('.inlater');
+    if(나중) 나중.onclick=나중에;
+  }
+  addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); 설치신호=e; 그리기(); });
+  addEventListener('appinstalled',나중에);
+  그리기();
+})();
+
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('sw.js').catch(function(){});
