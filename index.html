@@ -748,7 +748,12 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .herostrip b{display:block;font-family:'IBM Plex Mono','SFMono-Regular',ui-monospace,monospace;font-size:14px;font-weight:600;letter-spacing:-.03em}
 
 /* ═══ 날짜 탭 ═══ */
-.stickytop{position:sticky;top:0;z-index:40;background:var(--bg);box-shadow:0 3px 12px rgba(19,33,43,.10)}
+/* 아이폰 홈 화면 앱은 화면 맨 위(상태표시줄 아래)부터 그린다 — viewport-fit=cover 를 쓰므로
+   탭이 시계·배터리에 가려 눌리지 않았다. 아래쪽 안전영역은 이미 다섯 군데에서 처리하고 있었고
+   위쪽만 빠져 있었다. 브라우저로 열면 이 값이 0 이라 아무것도 달라지지 않는다.
+   .wrap 이 아니라 .stickytop 에 준다 — 좁은 화면 미디어쿼리가 .modes .wrap 의 padding-top 을 덮어쓴다. */
+.stickytop{position:sticky;top:0;z-index:40;background:var(--bg);box-shadow:0 3px 12px rgba(19,33,43,.10);
+  padding-top:env(safe-area-inset-top,0px)}
 .days{background:var(--bg)}
 /* ═══ 상단 모드 탭 — 여행 일정 / 준비물 ═══ */
 .modes{background:var(--bg)}
