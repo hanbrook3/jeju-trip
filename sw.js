@@ -1,7 +1,7 @@
 /* 제주 여행 가이드 — 오프라인 지원
    앱 화면은 캐시에서 바로 꺼내 쓰고, 뒤에서 새 버전을 받아 둔다.
    지도 타일과 경로 계산은 인터넷이 필요하다 — 실패해도 앱은 열린다. */
-const CACHE = 'jeju-trip-v16';
+const CACHE = 'jeju-trip-v17';
 const SHELL = ['./', './index.html'];
 
 self.addEventListener('install', e => {
