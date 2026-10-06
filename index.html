@@ -1302,6 +1302,9 @@ summary.head::-webkit-details-marker{display:none}
   letter-spacing:-.05em;color:var(--sea);text-align:right;
 }
 .tm .ampm{display:block;font-family:'Pretendard Variable','Pretendard','Apple SD Gothic Neo',sans-serif;font-size:11.5px;font-weight:600;letter-spacing:0;margin-bottom:1px}
+/* 관광 뒤 떠나는 시각 — 도착 시각 아래에 작게. 점선으로 머무는 동안을 잇는다 */
+.tm .tdep{display:block;margin-top:5px;padding-top:4px;border-top:1px dashed var(--line);font-size:12.5px;font-weight:500;color:var(--muted)}
+.tm .tdep .ampm{font-size:10.5px;font-weight:500;color:var(--faint)}
 .ttl{min-width:0}
 .ttl h3{margin:0;font-size:16px;font-weight:600;line-height:1.35;letter-spacing:-.015em}
 .ttl p{margin:2px 0 0;font-size:12px;color:var(--muted);line-height:1.45}
@@ -4643,6 +4646,18 @@ function apText(v){
   .replace(/오전 (\d{1,2}:[0-5]\d)\s*([~–-])\s*오전 (\d{1,2}:[0-5]\d)/g,'오전 $1$2$3')
   .replace(/오후 (\d{1,2}:[0-5]\d)\s*([~–-])\s*오후 (\d{1,2}:[0-5]\d)/g,'오후 $1$2$3');
 }
+/* 다음 곳 도착 시각에서 이동시간을 빼면 이곳을 떠나는 시각이다 — 화면의 두 시각과 늘 맞는다.
+   이동시간을 모르거나(좌표 없음) 머무는 시간이 없으면 적지 않는다. */
+function depChip(목록,si,계획,도착){
+  const 다음=목록[si+1]; if(!다음||!계획||!계획.rides) return '';
+  const 이동=계획.rides[si]; if(이동===null||이동===undefined) return '';
+  const 다음때=(window.__plan&&window.__plan.arrive[si+1])||다음.t;
+  const a=hm2min(도착), b=hm2min(다음때); if(a===null||b===null) return '';
+  const 떠남=b-이동; if(!(떠남>a)) return '';
+  const hm=min2hm(떠남).split(':'); if(+hm[0]>23) return '';
+  const t=ap12(hm[0],hm[1]), 앞=ap12(String(도착).split(':')[0],'00')[0];
+  return '<span class="tdep"><span class="ampm">'+(t[0]===앞?'출발':t[0]+' 출발')+'</span>'+t[1]+'</span>';
+}
 function apChip(v){
   const m=/^(\d{1,2}):([0-5]\d)$/.exec(String(v).trim());
   if(!m||+m[1]>23) return v;
@@ -4887,7 +4902,7 @@ function render(i){
     const mk=k>=0?` data-k="${k}" data-lat="${s.ll[0]}" data-lng="${s.ll[1]}"`:'';
     /* 편집 중에는 카드를 열어 둔 채 편집 줄만 보여 준다 — 접혀 있으면 편집 칸이 보이지 않는다 */
     return `<details class="stop ${s.ty}"${has?'':' data-x'}${mk}${editOn?' open':''}>
-      <summary class="head"><span class="tm">${apChip(때)}</span>
+      <summary class="head"><span class="tm">${apChip(때)}${editOn?'':depChip(목록,si,계획,때)}</span>
       <span class="ttl"><h3>${k>=0?`<b class="pnum"${핀색[k]?` style="--pinfill:${핀색[k]}"`:''}>${k+1}</b>`:''}${s.n}</h3>${(머묾||s.sub)?`<p>${머묾}${s.sub?apText(s.sub):''}</p>`:''}</span>
       ${has?CH:'<span></span>'}</summary>${editOn?editRow(i,s._k,s,si):(has?detail(s):'')}</details>`
       +(editOn?'':freeRow(s)+hopRow(목록,si,계획.rides));}).join('');
